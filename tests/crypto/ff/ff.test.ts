@@ -1,15 +1,15 @@
-import { expect, test, describe, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import { FF } from "../../../src/crypto/ff";
 import {
-  newElementTestCases,
-  newElementLargeNumberTestCases,
   TEST_PRIME,
   additionTestCases,
-  subtractionTestCases,
-  multiplicationTestCases,
   divideTestCases,
+  multiplicationTestCases,
   negateTestCases,
+  newElementLargeNumberTestCases,
+  newElementTestCases,
   normalizeTestCases,
+  subtractionTestCases,
 } from "./ff.test.cases";
 
 describe("Finite Field", () => {
