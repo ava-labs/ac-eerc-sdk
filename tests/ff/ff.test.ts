@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { FF } from "../../../src/crypto/ff";
+import { FF } from "../../src/crypto/ff";
 import {
   TEST_PRIME,
   additionTestCases,
