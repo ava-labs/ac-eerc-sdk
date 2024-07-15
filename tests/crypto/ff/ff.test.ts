@@ -49,19 +49,19 @@ describe("Finite Field", () => {
 
   test("subtraction handles numbers correctly", () => {
     for (const { a, b, expected } of subtractionTestCases) {
-      expect(field.subtract(a, b)).toBe(expected);
+      expect(field.sub(a, b)).toBe(expected);
     }
   });
 
   test("multiplication handles numbers correctly", () => {
     for (const { a, b, expected } of multiplicationTestCases) {
-      expect(field.multiply(a, b)).toBe(expected);
+      expect(field.mul(a, b)).toBe(expected);
     }
   });
 
   test("division handles numbers correctly", () => {
     for (const { a, b, expected } of divideTestCases) {
-      expect(field.divide(a, b)).toBe(expected);
+      expect(field.div(a, b)).toBe(expected);
     }
   });
 

@@ -23,18 +23,18 @@ export class FF {
   }
 
   // subtracts two elements in the field
-  subtract(a: bigint, b: bigint): bigint {
+  sub(a: bigint, b: bigint): bigint {
     return (a - b + this.p) % this.p;
   }
 
   // multiplies two elements in the field
-  multiply(a: bigint, b: bigint): bigint {
+  mul(a: bigint, b: bigint): bigint {
     return (a * b) % this.p;
   }
 
   // divides two elements in the field
-  divide(a: bigint, b: bigint): bigint {
-    return this.multiply(a, this.modInverse(b));
+  div(a: bigint, b: bigint): bigint {
+    return this.mul(a, this.modInverse(b));
   }
 
   // negates an element in the field
@@ -52,6 +52,10 @@ export class FF {
     }
 
     return value >= this.p ? value % this.p : value;
+  }
+
+  eq(a: bigint, b: bigint): boolean {
+    return a === b;
   }
 
   // returns the modular inverse of an element in the field
