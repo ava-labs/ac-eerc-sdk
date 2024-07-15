@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { BabyJub } from "../../src/crypto/babyjub";
-import type { Point } from "../../src/crypto/types";
+import type { ElGamalCipherText, Point } from "../../src/crypto/types";
 import { SNARK_FIELD_SIZE } from "../../src/utils";
 
 describe("BabyJub", () => {
@@ -138,6 +138,80 @@ describe("BabyJub", () => {
       }
       const multiplied = curve.mulWithScalar(curve.Generator, scalar);
       expect(repeated).toEqual(multiplied);
+    });
+  });
+
+  describe("generatePublicKey", () => {
+    test("should generate correct public key", () => {
+      const secretKey = 123456789n;
+      const publicKey = curve.generatePublicKey(secretKey);
+      expect(curve.inCurve(publicKey)).toBe(true);
+      expect(publicKey).toEqual(curve.mulWithScalar(curve.Base8, secretKey));
+    });
+
+    test("should throw error for invalid secret key", () => {
+      expect(() => curve.generatePublicKey(SNARK_FIELD_SIZE)).toThrowError(
+        "Secret key is not in the field",
+      );
+    });
+
+    test("should generate correct public key for edge case secret keys", () => {
+      const edgeCases = [1n, SNARK_FIELD_SIZE - 1n];
+      for (const sk of edgeCases) {
+        const pk = curve.generatePublicKey(sk);
+        expect(curve.inCurve(pk)).toBe(true);
+        expect(pk).toEqual(curve.mulWithScalar(curve.Base8, sk));
+      }
+    });
+  });
+
+  describe("el-gamal encryption and decryption", () => {
+    const COUNT = 10;
+    test("should encrypt & decrypt properly with random messages and random secret keys", async () => {
+      for (let idx = 0; idx < COUNT; idx++) {
+        const sk = await BabyJub.generateRandomValue();
+        const pk = curve.generatePublicKey(sk);
+        const message = await BabyJub.generateRandomValue();
+        const { cipher } = await curve.elGamalEncryptionWithScalar(pk, message);
+        const decrypted = curve.elGamalDecryption(sk, cipher);
+        expect(decrypted).toEqual(curve.mulWithScalar(curve.Base8, message));
+      }
+    });
+
+    test("should produce different cipher texts for the same message and key", async () => {
+      const sk = await BabyJub.generateRandomValue();
+      const pk = curve.generatePublicKey(sk);
+      const message = 12345n;
+      const { cipher: cipher1 } = await curve.elGamalEncryptionWithScalar(
+        pk,
+        message,
+      );
+      const { cipher: cipher2 } = await curve.elGamalEncryptionWithScalar(
+        pk,
+        message,
+      );
+      expect(cipher1).not.toEqual(cipher2);
+    });
+
+    test("homomorphic property", async () => {
+      const sk = await BabyJub.generateRandomValue();
+      const pk = curve.generatePublicKey(sk);
+      const m1 = 1234n;
+      const m2 = 5678n;
+      const { cipher: c1 } = await curve.elGamalEncryptionWithScalar(pk, m1);
+      const { cipher: c2 } = await curve.elGamalEncryptionWithScalar(pk, m2);
+
+      const sumCipher: ElGamalCipherText = {
+        c1: curve.addPoints(c1.c1, c2.c1),
+        c2: curve.addPoints(c1.c2, c2.c2),
+      };
+
+      const decryptedSum = curve.elGamalDecryption(sk, sumCipher);
+      const expectedSum = curve.mulWithScalar(
+        curve.Base8,
+        (m1 + m2) % SNARK_FIELD_SIZE,
+      );
+      expect(decryptedSum).toEqual(expectedSum);
     });
   });
 });

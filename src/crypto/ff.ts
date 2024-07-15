@@ -29,7 +29,11 @@ export class FF {
 
   // multiplies two elements in the field
   mul(a: bigint, b: bigint): bigint {
-    return (a * b) % this.p;
+    const result = (a * b) % this.p;
+    if (result < this.zero) {
+      return ((result % this.p) + this.p) % this.p;
+    }
+    return result;
   }
 
   // divides two elements in the field
@@ -58,24 +62,34 @@ export class FF {
     return a === b;
   }
 
-  // returns the modular inverse of an element in the field
-  private modInverse(a: bigint): bigint {
-    let [old_r, r] = [a, this.p];
-    let [old_s, s] = [this.one, this.zero];
-    let [old_t, t] = [this.zero, this.one];
-
-    while (r !== 0n) {
-      const q = old_r / r;
-      [old_r, r] = [r, old_r - q * r];
-      [old_s, s] = [s, old_s - q * s];
-      [old_t, t] = [t, old_t - q * t];
-    }
-
-    if (old_r !== this.one) throw new Error("No inverse exists");
-
-    return (old_s + this.p) % this.p;
+  isInField(value: bigint): boolean {
+    return value >= this.zero && value < this.p;
   }
 
-  // ElGamal Encryption
-  elGamalEncrypt() {}
+  modInverse(a: bigint): bigint {
+    if (a === 0n) {
+      throw new Error("Division by zero");
+    }
+
+    let t = 0n;
+    let r = this.p;
+    let newT = 1n;
+    let newR = this.normalize(a);
+
+    while (newR !== 0n) {
+      const quotient = r / newR;
+      [t, newT] = [newT, t - quotient * newT];
+      [r, newR] = [newR, r - quotient * newR];
+    }
+
+    if (r > 1n) {
+      throw new Error(`${a} has no multiplicative inverse modulo ${this.p}`);
+    }
+
+    if (t < 0n) {
+      t += this.p;
+    }
+
+    return this.normalize(t);
+  }
 }

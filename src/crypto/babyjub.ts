@@ -1,7 +1,7 @@
 import { SNARK_FIELD_SIZE } from "../utils";
 import { FF } from "./ff";
 import { Scalar } from "./scalar";
-import type { Point } from "./types";
+import type { ElGamalCipherText, Point } from "./types";
 
 export class BabyJub {
   public field: FF;
@@ -13,19 +13,37 @@ export class BabyJub {
     16950150798460657717958625567821834550301663161624707787222815936182638968203n,
   ];
 
+  public Base8: Point = [
+    5299619240641551281634865583518297030282874472190772894086521144482721001553n,
+    16950150798460657717958625567821834550301663161624707787222815936182638968203n,
+  ];
+
   constructor() {
     this.field = new FF(SNARK_FIELD_SIZE);
     this.A = 168700n;
     this.D = 168696n;
   }
 
+  // generates and returns a random scalar in the field
+  static async generateRandomValue(): Promise<bigint> {
+    const lowerBound = SNARK_FIELD_SIZE / 2n;
+
+    let rand: bigint;
+    do {
+      const randBytes = await BabyJub.getRandomBytes(32);
+      rand = BigInt(`0x${Buffer.from(randBytes).toString("hex")}`);
+    } while (rand < lowerBound);
+
+    return rand % SNARK_FIELD_SIZE;
+  }
+
   // adds two points on the curve
-  addPoints(p1: Point, p2: Point): Point {
-    const beta = this.field.mul(p1[0], p2[1]);
-    const gamma = this.field.mul(p1[1], p2[0]);
+  addPoints(a: Point, b: Point): Point {
+    const beta = this.field.mul(a[0], b[1]);
+    const gamma = this.field.mul(a[1], b[0]);
     const delta = this.field.mul(
-      this.field.sub(p1[1], this.field.mul(this.A, p1[0])),
-      this.field.add(p2[0], p2[1]),
+      this.field.sub(a[1], this.field.mul(this.A, a[0])),
+      this.field.add(b[0], b[1]),
     );
     const tau = this.field.mul(beta, gamma);
     const dtau = this.field.mul(this.D, tau);
@@ -80,5 +98,57 @@ export class BabyJub {
         this.field.mul(this.D, this.field.mul(x2, y2)),
       ),
     );
+  }
+
+  // generates public key from secret key
+  generatePublicKey(secretKey: bigint): Point {
+    if (!this.field.isInField(secretKey)) {
+      throw new Error("Secret key is not in the field");
+    }
+    return this.mulWithScalar(this.Base8, secretKey);
+  }
+
+  // el-gamal encryption with point message
+  async elGamalEncryption(
+    publicKey: Point,
+    message: Point,
+  ): Promise<{ cipher: ElGamalCipherText; random: bigint }> {
+    const random = await BabyJub.generateRandomValue();
+    const c1 = this.mulWithScalar(this.Base8, random);
+    const pky = this.mulWithScalar(publicKey, random);
+    const c2 = this.addPoints(message, pky);
+    return { cipher: { c1, c2 } as ElGamalCipherText, random: random };
+  }
+
+  // el-gamal encryption with scalar message
+  async elGamalEncryptionWithScalar(
+    publicKey: Point,
+    message: bigint,
+  ): Promise<{ cipher: ElGamalCipherText; random: bigint }> {
+    const mm = this.mulWithScalar(this.Base8, message);
+    return this.elGamalEncryption(publicKey, mm);
+  }
+
+  // el-gamal decryption
+  elGamalDecryption(privateKey: bigint, cipher: ElGamalCipherText): Point {
+    const c1x = this.mulWithScalar(cipher.c1, privateKey);
+    const c1xInverse = [this.field.mul(c1x[0], -1n), c1x[1]] as Point;
+    return this.addPoints(cipher.c2, c1xInverse);
+  }
+
+  // generates random bytes depending on the environment
+  private static async getRandomBytes(bytes: number): Promise<Uint8Array> {
+    if (
+      typeof window !== "undefined" &&
+      window.crypto &&
+      window.crypto.getRandomValues
+    ) {
+      return window.crypto.getRandomValues(new Uint8Array(bytes));
+    }
+    if (typeof require !== "undefined") {
+      const { randomBytes } = await import("node:crypto");
+      return new Uint8Array(randomBytes(bytes).buffer);
+    }
+    throw new Error("Unable to find a secure random number generator");
   }
 }

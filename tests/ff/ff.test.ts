@@ -76,4 +76,14 @@ describe("Finite Field", () => {
       expect(field.normalize(input)).toBe(expected);
     }
   });
+
+  test("modInverse", () => {
+    test("Inverse of 1 is 1", () => {
+      expect(field.modInverse(1n)).toBe(1n);
+    });
+
+    test("Inverse of 0 throws error", () => {
+      expect(() => field.modInverse(0n)).toThrow("Division by zero");
+    });
+  });
 });
