@@ -75,4 +75,7 @@ export class FF {
 
     return (old_s + this.p) % this.p;
   }
+
+  // ElGamal Encryption
+  elGamalEncrypt() {}
 }
