@@ -10,11 +10,12 @@ export class FF {
   }
 
   // returns a new element in the field
-  newElement(value: bigint): bigint {
-    if (value < this.zero) {
-      return ((value % this.p) + this.p) % this.p;
+  newElement(value: bigint | string): bigint {
+    const vv = typeof value === "string" ? BigInt(value) : value;
+    if (vv < this.zero) {
+      return ((vv % this.p) + this.p) % this.p;
     }
-    return value % this.p;
+    return vv % this.p;
   }
 
   // adds two elements in the field
@@ -46,6 +47,10 @@ export class FF {
     const vv = this.newElement(value);
     if (vv === this.zero) return this.zero;
     return this.p - vv;
+  }
+
+  square(a: bigint): bigint {
+    return this.mul(a, a);
   }
 
   normalize(value: bigint): bigint {
