@@ -1,8 +1,7 @@
-import { unstringifyBigInts } from "../../utils";
 import { BabyJub } from "../babyjub";
 import type { FF } from "../ff";
 import type { Point, PoseidonEncryptionResult } from "../types";
-import { POSEIDON_CONSTANTS } from "./poseidon_constants";
+import { C_RAW, M_RAW } from "./poseidon_constants";
 
 export class Poseidon {
   public field: FF;
@@ -64,15 +63,15 @@ export class Poseidon {
     if (ss.length > this.N_ROUNDS_P.length)
       throw new Error("Invalid poseidon state");
 
-    const { C, M } = unstringifyBigInts(POSEIDON_CONSTANTS);
-
     const t = ss.length;
     const nRoundsF = this.N_ROUNDS_F;
     const nRoundsP = this.N_ROUNDS_P[t - 2];
 
     let state = ss.map((e) => this.field.newElement(e));
     for (let r = 0; r < nRoundsF + nRoundsP; r++) {
-      state = state.map((a, i) => this.field.add(a, C[t - 2][r * t + i]));
+      state = state.map((a, i) =>
+        this.field.add(a, BigInt(C_RAW[t - 2][r * t + i])),
+      );
 
       if (r < nRoundsF / 2 || r >= nRoundsF / 2 + nRoundsP) {
         state = state.map((e) => this.pow5(e));
@@ -82,7 +81,8 @@ export class Poseidon {
 
       state = state.map((_, i) =>
         state.reduce(
-          (acc, a, j) => this.field.add(acc, this.field.mul(M[t - 2][i][j], a)),
+          (acc, a, j) =>
+            this.field.add(acc, this.field.mul(BigInt(M_RAW[t - 2][i][j]), a)),
           this.field.zero,
         ),
       );
