@@ -1,5 +1,5 @@
 import { SNARK_FIELD_SIZE } from "../utils";
-import { FF } from "./ff";
+import type { FF } from "./ff";
 import { Scalar } from "./scalar";
 import type { ElGamalCipherText, Point } from "./types";
 
@@ -18,8 +18,8 @@ export class BabyJub {
     16950150798460657717958625567821834550301663161624707787222815936182638968203n,
   ];
 
-  constructor() {
-    this.field = new FF(SNARK_FIELD_SIZE);
+  constructor(field: FF) {
+    this.field = field;
     this.A = 168700n;
     this.D = 168696n;
   }

@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { BabyJub } from "../../src/crypto/babyjub";
+import { FF } from "../../src/crypto/ff";
 import type { ElGamalCipherText, Point } from "../../src/crypto/types";
 import { SNARK_FIELD_SIZE } from "../../src/utils";
 
 describe("BabyJub", () => {
-  const curve = new BabyJub();
+  const field = new FF(SNARK_FIELD_SIZE);
+  const curve = new BabyJub(field);
 
   describe("addPoints", () => {
     test("Adding point to itself", () => {
