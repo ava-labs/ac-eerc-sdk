@@ -1,7 +1,8 @@
 {
-  "name": "@ava-labs/ac-eerc-sdk",
+  "name": "@avalabs/ac-eerc-sdk",
   "version": "1.0.0",
   "module": "src/index.ts",
+  "main": "dist/index.js",
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^18.3.3",
@@ -11,16 +12,20 @@
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
+  "engines": {
+    "node": ">=20.11.0"
+  },
   "private": true,
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist",
     "test": "bun test",
     "lint": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "watch": "bun build ./src/index.ts --outdir ./dist --watch"
   },
   "type": "module",
   "dependencies": {
     "ethers": "6.13.1",
-    "wagmi": "1.4.13"
+    "wagmi": "^1.4.13"
   }
 }

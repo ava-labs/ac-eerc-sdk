@@ -1,4 +1,4 @@
-# @ava-labs/ac-eerc-sdk
+# @avalabs/ac-eerc-sdk
 
 To install dependencies:
 
