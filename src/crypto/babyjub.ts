@@ -24,6 +24,14 @@ export class BabyJub {
     this.D = 168696n;
   }
 
+  static order() {
+    return 21888242871839275222246405745257275088614511777268538073601725287587578984328n;
+  }
+
+  static subOrder() {
+    return Scalar.shiftRight(BabyJub.order(), 3);
+  }
+
   // generates and returns a random scalar in the field
   static async generateRandomValue(): Promise<bigint> {
     const lowerBound = SNARK_FIELD_SIZE / 2n;
