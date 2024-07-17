@@ -45,22 +45,5 @@ describe("Poseidon Encryption & Decryption", () => {
 
       expect(decrypted).toEqual(inputs);
     }
-    // const sk =
-    //   5740379625339755798800204250072470033252660053090522577595307571693826259968n;
-    // const publicKey = curve.generatePublicKey(sk);
-
-    // const cc = await pos.processPoseidonEncryption({
-    //   inputs: [1n, 100n, 50n, 10n],
-    //   publicKey,
-    // });
-
-    // const decrypted = pos.processPoseidonDecryption({
-    //   privateKey: sk,
-    //   authKey: cc.authKey,
-    //   cipher: cc.cipher,
-    //   nonce: cc.nonce,
-    //   length: 4,
-    // });
-    // console.log("decrypted", decrypted);
   });
 });
