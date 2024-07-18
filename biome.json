@@ -17,6 +17,6 @@
     "lineWidth": 80
   },
   "files": {
-    "ignore": ["./dist"]
+    "ignore": ["./dist", "./src/crypto/data/*"]
   }
 }
