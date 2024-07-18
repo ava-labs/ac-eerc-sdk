@@ -116,6 +116,34 @@ export class BabyJub {
     return this.mulWithScalar(this.Base8, secretKey);
   }
 
+  // function calculates the balance in whole and fractional
+  // and encrypt with provided public key
+  async encryptAmount(
+    totalAmount: bigint,
+    publicKey: Point,
+  ): Promise<{
+    whole: { cipher: ElGamalCipherText; random: bigint; originalValue: bigint };
+    fractional: {
+      cipher: ElGamalCipherText;
+      random: bigint;
+      originalValue: bigint;
+    };
+  }> {
+    const [wholeAmount, fractionalAmount] = Scalar.recalculate(totalAmount);
+    const whole = await this.elGamalEncryptionWithScalar(
+      publicKey,
+      wholeAmount,
+    );
+    const fractional = await this.elGamalEncryptionWithScalar(
+      publicKey,
+      fractionalAmount,
+    );
+    return {
+      whole: { ...whole, originalValue: wholeAmount },
+      fractional: { ...fractional, originalValue: fractionalAmount },
+    };
+  }
+
   // el-gamal encryption with point message
   async elGamalEncryption(
     publicKey: Point,

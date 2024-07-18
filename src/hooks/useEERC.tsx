@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAsync } from "react-use";
-import { type PublicClient, type WalletClient, useContractRead } from "wagmi";
+import {
+  type PublicClient,
+  type WalletClient,
+  useContractRead,
+  useContractReads,
+} from "wagmi";
 import { EERC } from "../EERC";
 import { Scalar } from "../crypto/scalar";
+import type { Point } from "../crypto/types";
 import type { EncryptedBalance } from "./types";
 
 export function useEERC(
@@ -18,6 +24,7 @@ export function useEERC(
   const [isRegistered, setIsRegistered] = useState(false);
   const [decryptedBalance, setDecryptedBalance] = useState<bigint[]>([]);
   const [encryptedBalance, setEncryptedBalance] = useState<bigint[]>([]);
+  const [auditorPublicKey, setAuditorPublicKey] = useState<bigint[]>([]);
 
   useEffect(() => {
     if (client && wallet && contractAddress) {
@@ -41,18 +48,26 @@ export function useEERC(
   // expose register function to the user
   const register = useCallback(
     (wasmPath: string, zkeyPath: string) => {
-      if (!eerc || !wallet || !client || !contractAddress || !isInitialized)
-        return {
-          key: "",
-          error: "Missing client, wallet or contract address!",
-          proof: null,
-        };
-
+      if (!eerc) return;
       return eerc.register(wasmPath, zkeyPath);
     },
-    [eerc, wallet, client, contractAddress, isInitialized],
+    [eerc],
   );
 
+  const mint = useCallback(
+    (totalMintAmount: bigint, wasmPath: string, zkeyPath: string) => {
+      if (!eerc || !auditorPublicKey) return;
+      return eerc.mint(
+        totalMintAmount,
+        wasmPath,
+        zkeyPath,
+        auditorPublicKey as Point,
+      );
+    },
+    [eerc, auditorPublicKey],
+  );
+
+  // check if the user is registered or not
   useContractRead({
     address: contractAddress as `0x${string}`,
     abi: eerc?.abi,
@@ -67,6 +82,7 @@ export function useEERC(
     },
   });
 
+  // user encrypted balance
   useContractRead({
     address: contractAddress as `0x${string}`,
     abi: eerc?.abi,
@@ -99,5 +115,26 @@ export function useEERC(
     },
   });
 
-  return { isRegistered, register, decryptedBalance, encryptedBalance };
+  // auditor public key
+  useContractReads({
+    contracts: [
+      {
+        abi: eerc?.abi,
+        address: contractAddress as `0x${string}`,
+        functionName: "auditorPublicKey",
+        args: [0n],
+      },
+      {
+        abi: eerc?.abi,
+        address: contractAddress as `0x${string}`,
+        functionName: "auditorPublicKey",
+        args: [1n],
+      },
+    ],
+    onSuccess: ([X, Y]) => {
+      setAuditorPublicKey([X.result as bigint, Y.result as bigint]);
+    },
+  });
+
+  return { isRegistered, register, decryptedBalance, encryptedBalance, mint };
 }

@@ -3,7 +3,8 @@ import { BabyJub } from "./crypto/babyjub";
 import { BSGS } from "./crypto/bsgs";
 import { FF } from "./crypto/ff";
 import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
-import type { ElGamalCipherText } from "./crypto/types";
+import { Poseidon } from "./crypto/poseidon";
+import type { Point } from "./crypto/types";
 import { ProofGenerator } from "./helpers";
 import type { IProof } from "./helpers/types";
 import type { EncryptedBalance } from "./hooks/types";
@@ -12,14 +13,19 @@ import { ERC34_ABI, MESSAGES, SNARK_FIELD_SIZE } from "./utils";
 export class EERC {
   private client: PublicClient;
   private wallet: WalletClient;
+
   public curve: BabyJub;
   public field: FF;
+  public poseidon: Poseidon;
+
   public proofGenerator: ProofGenerator;
 
   public contractAddress: `0x${string}`;
   public abi = ERC34_ABI;
 
+  // user field
   private decryptionKey: string;
+  private publicKey: bigint[] = [];
 
   constructor(
     client: PublicClient,
@@ -33,8 +39,14 @@ export class EERC {
 
     this.field = new FF(SNARK_FIELD_SIZE);
     this.curve = new BabyJub(this.field);
+    this.poseidon = new Poseidon(this.field, this.curve);
     this.proofGenerator = new ProofGenerator();
     this.decryptionKey = decryptionKey || "";
+
+    if (this.decryptionKey) {
+      const formatted = formatKeyForCurve(this.decryptionKey);
+      this.publicKey = this.curve.generatePublicKey(formatted);
+    }
   }
 
   // function to register a new user to the contract
@@ -82,6 +94,7 @@ export class EERC {
       });
 
       this.decryptionKey = key;
+      this.publicKey = publicKey;
 
       // returns proof for the transaction
       return { key, error: "", proof, transactionHash };
@@ -90,6 +103,89 @@ export class EERC {
     }
   }
 
+  // function to mint tokens for a user
+  // totalMintAmount is a bigint with last 2 decimal places as fractional and
+  // others as whole number e.g.
+  //      11000 = 110.00
+  //        400 = 4.00
+  //         50 = 0.50
+  async mint(
+    totalMintAmount: bigint,
+    wasmPath: string,
+    zkeyPath: string,
+    auditorPublicKey: Point,
+  ): Promise<{ transactionHash: string }> {
+    if (
+      !this.wallet ||
+      !this.client ||
+      !this.contractAddress ||
+      !this.decryptionKey
+    )
+      throw new Error(
+        "Missing client, wallet, contract address or decryption key!",
+      );
+
+    const privateKey = formatKeyForCurve(this.decryptionKey);
+
+    // encrypt the total mint amount
+    const { whole: wholeEncrypted, fractional: fractionalEncrypted } =
+      await this.curve.encryptAmount(totalMintAmount, this.publicKey as Point);
+
+    const { cipher, nonce, encryptionKey, encryptionRandom, authKey } =
+      await this.poseidon.processPoseidonEncryption({
+        inputs: [
+          wholeEncrypted.originalValue,
+          fractionalEncrypted.originalValue,
+        ],
+        publicKey: auditorPublicKey as Point,
+      });
+
+    const input = {
+      sk: privateKey.toString(),
+      pk: this.publicKey.map(String),
+      MintAmountWhole: wholeEncrypted.originalValue.toString(),
+      MintAmountFraction: fractionalEncrypted.originalValue.toString(),
+      MintAmountWholeC1: wholeEncrypted.cipher.c1.map(String),
+      MintAmountWholeC2: wholeEncrypted.cipher.c2.map(String),
+      MintAmountFractionC1: fractionalEncrypted.cipher.c1.map(String),
+      MintAmountFractionC2: fractionalEncrypted.cipher.c2.map(String),
+      auditorPubKey: auditorPublicKey.map(String),
+      auditorSharedKey: authKey.map(String),
+      auditorCiphertextNonce: nonce.toString(),
+      auditCiphertext: cipher.map(String),
+      auditorEncKey: encryptionKey.map(String),
+      auditorEncKeyRandom: encryptionRandom.toString(),
+    };
+
+    const now = Date.now();
+    const proof = await this.proofGenerator.generateMintProof(
+      input,
+      wasmPath,
+      zkeyPath,
+    );
+    console.log("Proof generation time: ", Date.now() - now, "in ms");
+
+    // write the transaction to the contract
+    // ! the auditor public key mismatch
+    const transactionHash = await this.wallet.writeContract({
+      abi: this.abi,
+      address: this.contractAddress,
+      functionName: "privateMint",
+      args: [
+        this.wallet.account.address,
+        {
+          a: proof.a,
+          b: proof.b,
+          c: proof.c,
+          inputs: proof.input,
+        },
+      ],
+    });
+
+    return { transactionHash };
+  }
+
+  // decrypts user balance from the contract
   decryptContractBalance(cipher: EncryptedBalance): [bigint, bigint] {
     if (!this.decryptionKey) {
       console.error("Missing decryption key!");

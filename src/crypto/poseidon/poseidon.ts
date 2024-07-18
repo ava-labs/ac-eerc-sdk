@@ -25,7 +25,8 @@ export class Poseidon {
   }): Promise<PoseidonEncryptionResult> {
     const { inputs, publicKey } = params;
     const poseidonNonce = (await BabyJub.generateRandomValue()) % this.two128;
-    const encryptionRandom = await BabyJub.generateRandomValue();
+    const encryptionRandom =
+      (await BabyJub.generateRandomValue()) % BigInt(2 ** 253);
     const encryptionKey = this.curve.mulWithScalar(publicKey, encryptionRandom);
 
     const cipher = this.poseidonEncrypt(inputs, encryptionKey, poseidonNonce);
