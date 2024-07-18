@@ -94,6 +94,7 @@ export function useEERC(
         balance[1].c1.x,
         balance[1].c1.y,
         balance[1].c2.x,
+        balance[1].c2.y,
       ]);
     },
   });
