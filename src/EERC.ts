@@ -20,7 +20,9 @@ export class EERC {
 
   public proofGenerator: ProofGenerator;
 
+  // contract field
   public contractAddress: `0x${string}`;
+  public isConverter: boolean;
   public abi = ERC34_ABI;
 
   // user field
@@ -31,11 +33,13 @@ export class EERC {
     client: PublicClient,
     wallet: WalletClient,
     contractAddress: `0x${string}`,
+    isConverter: boolean,
     decryptionKey?: string,
   ) {
     this.client = client;
     this.wallet = wallet;
     this.contractAddress = contractAddress;
+    this.isConverter = isConverter;
 
     this.field = new FF(SNARK_FIELD_SIZE);
     this.curve = new BabyJub(this.field);
@@ -103,18 +107,19 @@ export class EERC {
     }
   }
 
-  // function to mint tokens for a user
+  // function to mint private tokens for a user (ONLY FOR STANDALONE VERSION)
   // totalMintAmount is a bigint with last 2 decimal places as fractional and
   // others as whole number e.g.
   //      11000 = 110.00
   //        400 = 4.00
   //         50 = 0.50
-  async mint(
+  async privateMint(
     totalMintAmount: bigint,
     wasmPath: string,
     zkeyPath: string,
     auditorPublicKey: Point,
   ): Promise<{ transactionHash: string }> {
+    if (this.isConverter) throw new Error("Not allowed for converter!");
     if (
       !this.wallet ||
       !this.client ||
@@ -163,7 +168,6 @@ export class EERC {
       wasmPath,
       zkeyPath,
     );
-    console.log("Proof generation time: ", Date.now() - now, "in ms");
 
     // write the transaction to the contract
     // ! the auditor public key mismatch

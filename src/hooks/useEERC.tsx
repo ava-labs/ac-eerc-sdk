@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { useAsync } from "react-use";
 import {
   type PublicClient,
   type WalletClient,
@@ -15,6 +14,7 @@ export function useEERC(
   client: PublicClient,
   wallet: WalletClient,
   contractAddress: string,
+  isConverter: boolean,
   decryptionKey?: string,
 ) {
   const [eerc, setEERC] = useState<EERC | null>(null);
@@ -33,6 +33,7 @@ export function useEERC(
           client,
           wallet,
           contractAddress as `0x${string}`,
+          isConverter,
           decryptionKey,
         ),
       );
@@ -43,7 +44,7 @@ export function useEERC(
       setEERC(null);
       setIsInitialized(false);
     };
-  }, [client, wallet, contractAddress, decryptionKey]);
+  }, [client, wallet, contractAddress, decryptionKey, isConverter]);
 
   // expose register function to the user
   const register = useCallback(
@@ -54,10 +55,10 @@ export function useEERC(
     [eerc],
   );
 
-  const mint = useCallback(
+  const privateMint = useCallback(
     (totalMintAmount: bigint, wasmPath: string, zkeyPath: string) => {
       if (!eerc || !auditorPublicKey) return;
-      return eerc.mint(
+      return eerc.privateMint(
         totalMintAmount,
         wasmPath,
         zkeyPath,
@@ -75,7 +76,7 @@ export function useEERC(
     args: [wallet.account.address],
     enabled: !!eerc && !!wallet.account.address,
     watch: true,
-    onSuccess: ([publicKey, _]: [{ x: bigint; y: bigint }, string]) => {
+    onSuccess: (publicKey: { x: bigint; y: bigint }) => {
       if (publicKey.x === eerc?.field.zero || publicKey.y === eerc?.field.zero)
         setIsRegistered(false);
       else setIsRegistered(true);
@@ -87,8 +88,8 @@ export function useEERC(
     address: contractAddress as `0x${string}`,
     abi: eerc?.abi,
     functionName: "balanceOf",
-    args: [wallet.account.address],
-    enabled: !!eerc && !!wallet.account.address && isRegistered,
+    args: [wallet?.account.address, 0n], // second parameter is the token id and for the standalone version it is 0
+    enabled: !!eerc && !!wallet.account.address && isRegistered && !isConverter,
     watch: true,
     onSuccess: (balance: EncryptedBalance) => {
       const decBalance = eerc?.decryptContractBalance(balance);
@@ -116,25 +117,19 @@ export function useEERC(
   });
 
   // auditor public key
-  useContractReads({
-    contracts: [
-      {
-        abi: eerc?.abi,
-        address: contractAddress as `0x${string}`,
-        functionName: "auditorPublicKey",
-        args: [0n],
-      },
-      {
-        abi: eerc?.abi,
-        address: contractAddress as `0x${string}`,
-        functionName: "auditorPublicKey",
-        args: [1n],
-      },
-    ],
-    onSuccess: ([X, Y]) => {
-      setAuditorPublicKey([X.result as bigint, Y.result as bigint]);
-    },
+  useContractRead({
+    abi: eerc?.abi,
+    address: contractAddress as `0x${string}`,
+    functionName: "getAuditorPublicKey",
+    args: [],
+    onSuccess: (publicKey) => setAuditorPublicKey(publicKey as bigint[]),
   });
 
-  return { isRegistered, register, decryptedBalance, encryptedBalance, mint };
+  return {
+    isRegistered,
+    register,
+    decryptedBalance,
+    encryptedBalance,
+    privateMint,
+  };
 }
