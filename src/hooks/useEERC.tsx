@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAsync } from "react-use";
 import { type PublicClient, type WalletClient, useContractRead } from "wagmi";
 import { EERC } from "../EERC";
+import { Scalar } from "../crypto/scalar";
 import type { EncryptedBalance } from "./types";
 
 export function useEERC(
@@ -15,7 +16,8 @@ export function useEERC(
 
   // isRegistered to the contract
   const [isRegistered, setIsRegistered] = useState(false);
-  const [encryptedBalance, setEncryptedBalance] = useState<string | null>(null);
+  const [decryptedBalance, setDecryptedBalance] = useState<bigint[]>([]);
+  const [encryptedBalance, setEncryptedBalance] = useState<bigint[]>([]);
 
   useEffect(() => {
     if (client && wallet && contractAddress) {
@@ -70,12 +72,31 @@ export function useEERC(
     abi: eerc?.abi,
     functionName: "balanceOf",
     args: [wallet.account.address],
-    enabled: !!eerc && !!wallet.account.address,
+    enabled: !!eerc && !!wallet.account.address && isRegistered,
     watch: true,
     onSuccess: (balance: EncryptedBalance) => {
-      const decryptedBalance = eerc?.decryptContractBalance(balance);
+      const decBalance = eerc?.decryptContractBalance(balance);
+      if (!decBalance) {
+        setDecryptedBalance([]);
+        setEncryptedBalance([]);
+        return;
+      }
+      const parsedDecryptedBalance = Scalar.adjust(
+        decBalance[0],
+        decBalance[1],
+      );
+      setDecryptedBalance(parsedDecryptedBalance);
+      setEncryptedBalance([
+        balance[0].c1.x,
+        balance[0].c1.y,
+        balance[0].c2.x,
+        balance[0].c2.y,
+        balance[1].c1.x,
+        balance[1].c1.y,
+        balance[1].c2.x,
+      ]);
     },
   });
 
-  return { isRegistered, register };
+  return { isRegistered, register, decryptedBalance, encryptedBalance };
 }

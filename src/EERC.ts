@@ -1,5 +1,6 @@
 import { type PublicClient, type WalletClient, useContractRead } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
+import { BSGS } from "./crypto/bsgs";
 import { FF } from "./crypto/ff";
 import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
 import type { ElGamalCipherText } from "./crypto/types";
@@ -89,24 +90,30 @@ export class EERC {
     }
   }
 
-  decryptContractBalance(cipher: EncryptedBalance) {
+  decryptContractBalance(cipher: EncryptedBalance): [bigint, bigint] {
     if (!this.decryptionKey) {
       console.error("Missing decryption key!");
-      return;
+      return [0n, 0n];
     }
 
-    const privateKey = this.field.newElement(this.decryptionKey);
+    const privateKey = formatKeyForCurve(this.decryptionKey);
     const wholeCipher = cipher[0];
     const fractionalCipher = cipher[1];
 
     // decrypts the balance using the decryption key
-    const whole = this.curve.elGamalDecryption(privateKey, {
+    const wholePoint = this.curve.elGamalDecryption(privateKey, {
       c1: [wholeCipher.c1.x, wholeCipher.c1.y],
       c2: [wholeCipher.c2.x, wholeCipher.c2.y],
     });
-    const fractional = this.curve.elGamalDecryption(privateKey, {
+    const fractionalPoint = this.curve.elGamalDecryption(privateKey, {
       c1: [fractionalCipher.c1.x, fractionalCipher.c1.y],
       c2: [fractionalCipher.c2.x, fractionalCipher.c2.y],
     });
+
+    // doing bsgs
+    const whole = BSGS.do(wholePoint, this.curve);
+    const fractional = BSGS.do(fractionalPoint, this.curve);
+
+    return [whole, fractional];
   }
 }
