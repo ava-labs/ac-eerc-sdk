@@ -83,7 +83,7 @@ export function useEERC(
     },
   });
 
-  // user encrypted balance
+  // user encrypted balance (standalone version)
   useContractRead({
     address: contractAddress as `0x${string}`,
     abi: eerc?.abi,
