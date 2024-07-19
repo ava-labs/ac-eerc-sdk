@@ -29,6 +29,21 @@ export class ProofGenerator {
     return this.convertCallData(calldata);
   }
 
+  async generateTransferProof(
+    input: object,
+    wasmPath: string,
+    zkeyPath: string,
+  ) {
+    const { proof, publicSignals } = await groth16.fullProve(
+      input,
+      wasmPath,
+      zkeyPath,
+    );
+
+    const calldata = await groth16.exportSolidityCallData(proof, publicSignals);
+    return this.convertCallData(calldata);
+  }
+
   // converts snarkjs generated calldata to a solidity input object
   private convertCallData(calldata: string): IProof {
     const argv = calldata.replace(/["[\]\s]/g, "").split(",");

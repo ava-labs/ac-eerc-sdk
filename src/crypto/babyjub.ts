@@ -8,11 +8,6 @@ export class BabyJub {
   public A: bigint;
   public D: bigint;
 
-  public Generator: Point = [
-    5299619240641551281634865583518297030282874472190772894086521144482721001553n,
-    16950150798460657717958625567821834550301663161624707787222815936182638968203n,
-  ];
-
   public Base8: Point = [
     5299619240641551281634865583518297030282874472190772894086521144482721001553n,
     16950150798460657717958625567821834550301663161624707787222815936182638968203n,
@@ -144,12 +139,30 @@ export class BabyJub {
     };
   }
 
+  // encrypts the array of bigint value
+  async encryptArray(
+    values: bigint[],
+    publicKey: Point,
+  ): Promise<{ cipher: ElGamalCipherText[]; random: bigint[] }> {
+    const cipher: ElGamalCipherText[] = [];
+    const random: bigint[] = [];
+    for (const value of values) {
+      const { cipher: c, random: r } = await this.elGamalEncryptionWithScalar(
+        publicKey,
+        value,
+      );
+      cipher.push(c);
+      random.push(r);
+    }
+    return { cipher, random };
+  }
+
   // el-gamal encryption with point message
   async elGamalEncryption(
     publicKey: Point,
     message: Point,
   ): Promise<{ cipher: ElGamalCipherText; random: bigint }> {
-    const random = await BabyJub.generateRandomValue();
+    const random = (await BabyJub.generateRandomValue()) % BigInt(2 ** 253);
     const c1 = this.mulWithScalar(this.Base8, random);
     const pky = this.mulWithScalar(publicKey, random);
     const c2 = this.addPoints(message, pky);

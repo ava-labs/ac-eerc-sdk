@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  type PublicClient,
-  type WalletClient,
-  useContractRead,
-  useContractReads,
-} from "wagmi";
+import { type PublicClient, type WalletClient, useContractRead } from "wagmi";
 import { EERC } from "../EERC";
 import { Scalar } from "../crypto/scalar";
 import type { Point } from "../crypto/types";
@@ -22,6 +17,9 @@ export function useEERC(
 
   // isRegistered to the contract
   const [isRegistered, setIsRegistered] = useState(false);
+  const [parsedDecryptedBalance, setParsedDecryptedBalance] = useState<
+    bigint[]
+  >([]);
   const [decryptedBalance, setDecryptedBalance] = useState<bigint[]>([]);
   const [encryptedBalance, setEncryptedBalance] = useState<bigint[]>([]);
   const [auditorPublicKey, setAuditorPublicKey] = useState<bigint[]>([]);
@@ -68,12 +66,43 @@ export function useEERC(
     [eerc, auditorPublicKey],
   );
 
+  const privateBurn = useCallback(
+    (amount: bigint, wasmPath: string, zkeyPath: string) => {
+      if (!eerc) return;
+      return eerc.privateBurn(
+        amount,
+        encryptedBalance,
+        decryptedBalance,
+        auditorPublicKey,
+        wasmPath,
+        zkeyPath,
+      );
+    },
+    [eerc, encryptedBalance, decryptedBalance, auditorPublicKey],
+  );
+
+  const transfer = useCallback(
+    (to: string, amount: bigint, wasmPath: string, zkeyPath: string) => {
+      if (!eerc) return;
+      return eerc.transfer(
+        to,
+        amount,
+        encryptedBalance,
+        decryptedBalance,
+        auditorPublicKey,
+        wasmPath,
+        zkeyPath,
+      );
+    },
+    [eerc, encryptedBalance, decryptedBalance, auditorPublicKey],
+  );
+
   // check if the user is registered or not
   useContractRead({
     address: contractAddress as `0x${string}`,
     abi: eerc?.abi,
     functionName: "getUser",
-    args: [wallet.account.address],
+    args: [wallet?.account.address],
     enabled: !!eerc && !!wallet.account.address,
     watch: true,
     onSuccess: (publicKey: { x: bigint; y: bigint }) => {
@@ -92,17 +121,27 @@ export function useEERC(
     enabled: !!eerc && !!wallet.account.address && isRegistered && !isConverter,
     watch: true,
     onSuccess: (balance: EncryptedBalance) => {
+      // if previous balance is equal to the new balance then return
+      if (encryptedBalance.length && balance[0].c1.x === encryptedBalance[0]) {
+        console.log("No change in the encrypted balance");
+        return;
+      }
+
+      // TODO: If encrypted balance is saved in somewhere in the local storage
+      // TODO: then we can compare the encrypted balance with the saved one and
+      // TODO: instead of decrypting the whole balance we can only decrypt the difference
       const decBalance = eerc?.decryptContractBalance(balance);
       if (!decBalance) {
         setDecryptedBalance([]);
         setEncryptedBalance([]);
         return;
       }
+      setDecryptedBalance(decBalance);
       const parsedDecryptedBalance = Scalar.adjust(
         decBalance[0],
         decBalance[1],
       );
-      setDecryptedBalance(parsedDecryptedBalance);
+      setParsedDecryptedBalance(parsedDecryptedBalance);
       setEncryptedBalance([
         balance[0].c1.x,
         balance[0].c1.y,
@@ -128,9 +167,13 @@ export function useEERC(
 
   return {
     isRegistered,
-    register,
-    decryptedBalance,
+    decryptedBalance: parsedDecryptedBalance,
     encryptedBalance,
+
+    // functions
+    register,
     privateMint,
+    privateBurn,
+    transfer,
   };
 }

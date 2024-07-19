@@ -1,9 +1,11 @@
+import { isAddress } from "ethers";
 import { type PublicClient, type WalletClient, useContractRead } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { BSGS } from "./crypto/bsgs";
 import { FF } from "./crypto/ff";
 import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
 import { Poseidon } from "./crypto/poseidon";
+import { Scalar } from "./crypto/scalar";
 import type { Point } from "./crypto/types";
 import { ProofGenerator } from "./helpers";
 import type { IProof } from "./helpers/types";
@@ -24,6 +26,13 @@ export class EERC {
   public contractAddress: `0x${string}`;
   public isConverter: boolean;
   public abi = ERC34_ABI;
+
+  // burn user is used for private burn transactions
+  // instead of burning tokens, they are transferred to the burn user
+  public BURN_USER = {
+    address: "0x1111111111111111111111111111111111111111",
+    publicKey: [0n, 1n],
+  };
 
   // user field
   private decryptionKey: string;
@@ -65,6 +74,9 @@ export class EERC {
   }> {
     if (!this.wallet || !this.client || !this.contractAddress)
       throw new Error("Missing client, wallet or contract address!");
+
+    if (this.publicKey.length)
+      throw new Error("User already registered to the contract!");
 
     try {
       // message to sign
@@ -162,7 +174,6 @@ export class EERC {
       auditorEncKeyRandom: encryptionRandom.toString(),
     };
 
-    const now = Date.now();
     const proof = await this.proofGenerator.generateMintProof(
       input,
       wasmPath,
@@ -186,6 +197,196 @@ export class EERC {
     });
 
     return { transactionHash };
+  }
+
+  // function for burning encrypted tokens privately
+  // private burn is equals to private transfer to the burn user (ONLY FOR STANDALONE VERSION)
+  async privateBurn(
+    totalAmount: bigint,
+    encryptedBalance: bigint[],
+    decryptedBalance: bigint[],
+    auditorPublicKey: bigint[],
+    wasmPath: string,
+    zkeyPath: string,
+  ) {
+    if (this.isConverter) throw new Error("Not allowed for converter!");
+    if (
+      !this.wallet ||
+      !this.client ||
+      !this.contractAddress ||
+      !this.decryptionKey
+    )
+      throw new Error(
+        "Missing client, wallet, contract address or decryption key!",
+      );
+
+    const proof = await this.generateTransferProof(
+      this.BURN_USER.address,
+      totalAmount,
+      encryptedBalance,
+      decryptedBalance,
+      auditorPublicKey,
+      wasmPath,
+      zkeyPath,
+    );
+
+    const transactionHash = await this.wallet.writeContract({
+      abi: this.abi,
+      address: this.contractAddress,
+      functionName: "privateBurn",
+      args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: proof.input }],
+    });
+
+    return { transactionHash };
+  }
+
+  async transfer(
+    to: string,
+    totalAmount: bigint,
+    encryptedBalance: bigint[],
+    decryptedBalance: bigint[],
+    auditorPublicKey: bigint[],
+    wasmPath: string,
+    zkeyPath: string,
+  ) {
+    if (
+      !this.wallet ||
+      !this.client ||
+      !this.contractAddress ||
+      !this.decryptionKey
+    )
+      throw new Error(
+        "Missing client, wallet, contract address or decryption key!",
+      );
+
+    const proof = await this.generateTransferProof(
+      to,
+      totalAmount,
+      encryptedBalance,
+      decryptedBalance,
+      auditorPublicKey,
+      wasmPath,
+      zkeyPath,
+    );
+
+    const transactionHash = await this.wallet.writeContract({
+      abi: this.abi,
+      address: this.contractAddress,
+      functionName: "transfer",
+      args: [to, { a: proof.a, b: proof.b, c: proof.c, inputs: proof.input }],
+    });
+
+    return { transactionHash };
+  }
+
+  // generating transfer proof for private burn and transfer
+  async generateTransferProof(
+    to: string,
+    amount: bigint,
+    encryptedBalance: bigint[],
+    decryptedBalance: bigint[],
+    auditorPublicKey: bigint[],
+    wasmPath: string,
+    zkeyPath: string,
+  ) {
+    try {
+      if (!isAddress(to)) throw new Error("Invalid receiver address!");
+      const privateKey = formatKeyForCurve(this.decryptionKey);
+
+      const receiverPublicKey = await this.fetchPublicKey(to);
+      const [transferWhole, transferFractional] = Scalar.recalculate(amount);
+
+      const senderTotalBalance = Scalar.calculate(
+        decryptedBalance[0],
+        decryptedBalance[1],
+      );
+
+      if (amount > senderTotalBalance) throw new Error("Insufficient balance!");
+      const [toBeSubtracted, toBeAdded] = Scalar.decide(
+        decryptedBalance[0],
+        decryptedBalance[1],
+        transferWhole,
+        transferFractional,
+      );
+
+      const senderNewBalance = senderTotalBalance - amount;
+      const [newWhole, newFractional] = Scalar.recalculate(senderNewBalance);
+
+      const toBeSubtractedEncrypted = await this.curve.encryptArray(
+        toBeSubtracted,
+        this.publicKey as Point,
+      );
+      const toBeAddedEncrypted = await this.curve.encryptArray(
+        toBeAdded,
+        this.publicKey as Point,
+      );
+
+      // encrypts for receiver
+      const { whole: wholeReceiver, fractional: fractionalReceiver } =
+        await this.curve.encryptAmount(amount, receiverPublicKey);
+
+      const { cipher, nonce, encryptionKey, encryptionRandom, authKey } =
+        await this.poseidon.processPoseidonEncryption({
+          inputs: [transferWhole, transferFractional],
+          publicKey: auditorPublicKey as Point,
+        });
+
+      const input = {
+        obd: decryptedBalance[0].toString(),
+        obf: decryptedBalance[1].toString(),
+        old_balance_tot: senderTotalBalance.toString(),
+        new_balance_dec: newWhole.toString(),
+        new_balance_float: newFractional.toString(),
+        ad: transferWhole.toString(),
+        af: transferFractional.toString(),
+        a1_dec: toBeSubtracted[0].toString(),
+        a1_float: toBeSubtracted[1].toString(),
+        a2_dec: toBeAdded[0].toString(),
+        a2_float: toBeAdded[1].toString(),
+        sender_sk: privateKey.toString(),
+        sender_pk: this.publicKey.map(String),
+        obd_c1: [encryptedBalance[0], encryptedBalance[1]].map(String),
+        obd_c2: [encryptedBalance[2], encryptedBalance[3]].map(String),
+        obf_c1: [encryptedBalance[4], encryptedBalance[5]].map(String),
+        obf_c2: [encryptedBalance[6], encryptedBalance[7]].map(String),
+
+        a1_dec_c1: toBeSubtractedEncrypted.cipher[0].c1.map(String),
+        a1_dec_c2: toBeSubtractedEncrypted.cipher[0].c2.map(String),
+        a1_float_c1: toBeSubtractedEncrypted.cipher[1].c1.map(String),
+        a1_float_c2: toBeSubtractedEncrypted.cipher[1].c2.map(String),
+
+        a2_dec_c1: toBeAddedEncrypted.cipher[0].c1.map(String),
+        a2_dec_c2: toBeAddedEncrypted.cipher[0].c2.map(String),
+        a2_float_c1: toBeAddedEncrypted.cipher[1].c1.map(String),
+        a2_float_c2: toBeAddedEncrypted.cipher[1].c2.map(String),
+
+        receiver_pk: receiverPublicKey.map(String),
+        recv_elgamal_random: [
+          wholeReceiver.random,
+          fractionalReceiver.random,
+        ].map(String),
+        receiver_amount_dec_c1: wholeReceiver.cipher.c1.map(String),
+        receiver_amount_dec_c2: wholeReceiver.cipher.c2.map(String),
+        receiver_amount_float_c1: fractionalReceiver.cipher.c1.map(String),
+        receiver_amount_float_c2: fractionalReceiver.cipher.c2.map(String),
+        auditorSharedKey: authKey.map(String),
+        auditorEncKeyRandom: encryptionRandom.toString(),
+        auditorPubKey: auditorPublicKey.map(String),
+        auditorCiphertextNonce: nonce.toString(),
+        auditCiphertext: cipher.map(String),
+        auditorEncKey: encryptionKey.map(String),
+      };
+
+      const proof = await this.proofGenerator.generateTransferProof(
+        input,
+        wasmPath,
+        zkeyPath,
+      );
+
+      return proof;
+    } catch (e) {
+      throw new Error(e as string);
+    }
   }
 
   // decrypts user balance from the contract
@@ -214,5 +415,30 @@ export class EERC {
     const fractional = BSGS.do(fractionalPoint, this.curve);
 
     return [whole, fractional];
+  }
+
+  // fetches the user public key from the contract
+  async fetchPublicKey(to: string): Promise<Point> {
+    if (!this.wallet || !this.client || !this.contractAddress)
+      throw new Error("Missing client, wallet or contract address!");
+
+    if (to === this.BURN_USER.address) {
+      return this.BURN_USER.publicKey as Point;
+    }
+
+    const data = await this.client.readContract({
+      address: this.contractAddress,
+      abi: this.abi,
+      functionName: "getUser",
+      args: [to],
+    });
+    const pk = data as { x: bigint; y: bigint };
+
+    if (!pk) throw new Error("User not registered!");
+
+    if (pk.x === this.field.zero || pk.y === this.field.zero)
+      throw new Error("User not registered!");
+
+    return [pk.x, pk.y];
   }
 }

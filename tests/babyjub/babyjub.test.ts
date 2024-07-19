@@ -10,15 +10,15 @@ describe("BabyJub", () => {
 
   describe("addPoints", () => {
     test("Adding point to itself", () => {
-      const result = curve.addPoints(curve.Generator, curve.Generator);
+      const result = curve.addPoints(curve.Base8, curve.Base8);
       expect(curve.inCurve(result)).toBe(true);
-      expect(result).not.toEqual(curve.Generator);
+      expect(result).not.toEqual(curve.Base8);
     });
 
     test("Adding point to identity element", () => {
       const identity: Point = [curve.field.zero, curve.field.one];
-      const result = curve.addPoints(curve.Generator, identity);
-      expect(result).toEqual(curve.Generator);
+      const result = curve.addPoints(curve.Base8, identity);
+      expect(result).toEqual(curve.Base8);
     });
 
     test("Adding identity to itself", () => {
@@ -28,7 +28,7 @@ describe("BabyJub", () => {
     });
 
     test("Commutativity: P + Q = Q + P", () => {
-      const P = curve.Generator;
+      const P = curve.Base8;
       const Q = curve.mulWithScalar(P, 2n);
       const result1 = curve.addPoints(P, Q);
       const result2 = curve.addPoints(Q, P);
@@ -36,7 +36,7 @@ describe("BabyJub", () => {
     });
 
     test("Associativity: (P + Q) + R = P + (Q + R)", () => {
-      const P = curve.Generator;
+      const P = curve.Base8;
       const Q = curve.mulWithScalar(P, 2n);
       const R = curve.mulWithScalar(P, 3n);
       const result1 = curve.addPoints(curve.addPoints(P, Q), R);
@@ -45,14 +45,14 @@ describe("BabyJub", () => {
     });
 
     test("Adding inverse points", () => {
-      const P = curve.Generator;
+      const P = curve.Base8;
       const negP: Point = [curve.field.negate(P[0]), P[1]];
       const result = curve.addPoints(P, negP);
       expect(result).toEqual([curve.field.zero, curve.field.one]);
     });
 
     test("Adding points with same x-coordinate", () => {
-      const P = curve.Generator;
+      const P = curve.Base8;
       const Q: Point = [P[0], curve.field.negate(P[1])];
       const result = curve.addPoints(P, Q);
       expect(curve.inCurve(result)).toBe(true);
@@ -61,20 +61,20 @@ describe("BabyJub", () => {
 
   describe("subPoints", () => {
     test("Subtracting a point from itself results in identity", () => {
-      const P = curve.Generator;
+      const P = curve.Base8;
       const result = curve.subPoints(P, P);
       expect(result).toEqual([curve.field.zero, curve.field.one]);
     });
 
     test("Subtracting identity from a point returns the point", () => {
-      const P = curve.Generator;
+      const P = curve.Base8;
       const identity: Point = [curve.field.zero, curve.field.one];
       const result = curve.subPoints(P, identity);
       expect(result).toEqual(P);
     });
 
     test("Subtracting and then adding the same point", () => {
-      const P = curve.Generator;
+      const P = curve.Base8;
       const Q = curve.mulWithScalar(P, 5n);
       const diff = curve.subPoints(Q, P);
       const result = curve.addPoints(P, diff);
@@ -82,7 +82,7 @@ describe("BabyJub", () => {
     });
 
     test("Double subtraction: (P - Q) - Q = P - 2Q", () => {
-      const P = curve.Generator;
+      const P = curve.Base8;
       const Q = curve.mulWithScalar(P, 2n);
       const result1 = curve.subPoints(curve.subPoints(P, Q), Q);
       const result2 = curve.subPoints(P, curve.mulWithScalar(Q, 2n));
@@ -92,23 +92,23 @@ describe("BabyJub", () => {
 
   describe("mulWithScalar", () => {
     test("Multiplying by 0 returns the identity point", () => {
-      const result = curve.mulWithScalar(curve.Generator, 0n);
+      const result = curve.mulWithScalar(curve.Base8, 0n);
       expect(result).toEqual([curve.field.zero, curve.field.one]);
     });
 
     test("Multiplying by 1 returns the same point", () => {
-      const result = curve.mulWithScalar(curve.Generator, 1n);
-      expect(result).toEqual(curve.Generator);
+      const result = curve.mulWithScalar(curve.Base8, 1n);
+      expect(result).toEqual(curve.Base8);
     });
 
     test("Multiplying by 2 is equivalent to point addition with itself", () => {
-      const doublePoint = curve.addPoints(curve.Generator, curve.Generator);
-      const result = curve.mulWithScalar(curve.Generator, 2n);
+      const doublePoint = curve.addPoints(curve.Base8, curve.Base8);
+      const result = curve.mulWithScalar(curve.Base8, 2n);
       expect(result).toEqual(doublePoint);
     });
 
     test("Scalar multiplication is distributive over point addition", () => {
-      const P = curve.Generator;
+      const P = curve.Base8;
       const Q = curve.mulWithScalar(P, 2n);
       const scalar = 5n;
       const left = curve.mulWithScalar(curve.addPoints(P, Q), scalar);
@@ -121,24 +121,24 @@ describe("BabyJub", () => {
 
     test("Large scalar multiplication", () => {
       const largeScalar = 2n ** 100n;
-      const result = curve.mulWithScalar(curve.Generator, largeScalar);
+      const result = curve.mulWithScalar(curve.Base8, largeScalar);
       expect(curve.inCurve(result)).toBe(true);
     });
 
     test("Scalar multiplication result always on the curve", () => {
       for (let i = 1n; i <= 20n; i++) {
-        const result = curve.mulWithScalar(curve.Generator, i);
+        const result = curve.mulWithScalar(curve.Base8, i);
         expect(curve.inCurve(result)).toBe(true);
       }
     });
 
     test("Repeated addition equals scalar multiplication", () => {
       const scalar = 7n;
-      let repeated = curve.Generator;
+      let repeated = curve.Base8;
       for (let i = 1n; i < scalar; i++) {
-        repeated = curve.addPoints(repeated, curve.Generator);
+        repeated = curve.addPoints(repeated, curve.Base8);
       }
-      const multiplied = curve.mulWithScalar(curve.Generator, scalar);
+      const multiplied = curve.mulWithScalar(curve.Base8, scalar);
       expect(repeated).toEqual(multiplied);
     });
   });
