@@ -123,6 +123,7 @@ export function useEERC(
     functionName: "getAuditorPublicKey",
     args: [],
     onSuccess: (publicKey) => setAuditorPublicKey(publicKey as bigint[]),
+    watch: false,
   });
 
   return {

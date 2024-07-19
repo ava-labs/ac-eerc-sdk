@@ -170,7 +170,6 @@ export class EERC {
     );
 
     // write the transaction to the contract
-    // ! the auditor public key mismatch
     const transactionHash = await this.wallet.writeContract({
       abi: this.abi,
       address: this.contractAddress,
