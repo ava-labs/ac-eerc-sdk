@@ -108,6 +108,30 @@ export class EERC {
         zkeyPath,
       );
 
+      const check = async () => {
+        const data = (await this.client.readContract({
+          address: this.contractAddress,
+          abi: this.abi,
+          functionName: "getUser",
+          args: [this.wallet.account.address],
+        })) as { x: bigint; y: bigint };
+
+        if (data.x !== 0n || data.y !== 0n) return true;
+        return false;
+      };
+
+      const isRegistered = await check();
+      if (isRegistered) {
+        this.decryptionKey = key;
+        this.publicKey = publicKey;
+        return {
+          key,
+          error: "User already registered!",
+          proof: null,
+          transactionHash: "",
+        };
+      }
+
       const transactionHash = await this.wallet.writeContract({
         abi: this.abi,
         address: this.contractAddress,
@@ -254,6 +278,7 @@ export class EERC {
     auditorPublicKey: bigint[],
     wasmPath: string,
     zkeyPath: string,
+    tokenId = 0n,
   ) {
     if (
       !this.wallet ||
@@ -279,10 +304,66 @@ export class EERC {
       abi: this.abi,
       address: this.contractAddress,
       functionName: "transfer",
-      args: [to, { a: proof.a, b: proof.b, c: proof.c, inputs: proof.input }],
+      args: [
+        to,
+        { a: proof.a, b: proof.b, c: proof.c, inputs: proof.input },
+        tokenId,
+      ],
     });
 
     return { transactionHash };
+  }
+
+  async transferToken(
+    to: string,
+    totalAmount: bigint,
+    auditorPublicKey: bigint[],
+    wasmPath: string,
+    zkeyPath: string,
+    tokenAddress: string,
+  ) {
+    if (
+      !this.wallet ||
+      !this.client ||
+      !this.contractAddress ||
+      !this.decryptionKey
+    )
+      throw new Error(
+        "Missing client, wallet, contract address or decryption key!",
+      );
+
+    try {
+      const tokenId = await this.tokenId(tokenAddress as string);
+      const encryptedBalance = await this.fetchUserBalance(
+        this.wallet.account.address,
+        tokenAddress,
+      );
+      const decryptedBalance = this.decryptContractBalance(encryptedBalance);
+
+      const transactionHash = await this.transfer(
+        to,
+        totalAmount,
+        [
+          encryptedBalance[0].c1.x,
+          encryptedBalance[0].c1.y,
+          encryptedBalance[0].c2.x,
+          encryptedBalance[0].c2.y,
+          encryptedBalance[1].c1.x,
+          encryptedBalance[1].c1.y,
+          encryptedBalance[1].c2.x,
+          encryptedBalance[1].c2.y,
+        ],
+        decryptedBalance,
+        auditorPublicKey,
+        wasmPath,
+        zkeyPath,
+        tokenId,
+      );
+
+      return { transactionHash };
+    } catch (e) {
+      throw new Error(e as string);
+    }
   }
 
   // function to deposit tokens to the contract
@@ -324,7 +405,7 @@ export class EERC {
     wasmPath: string,
     zkeyPath: string,
     tokenAddress: string,
-  ) {
+  ): Promise<{ transactionHash: string }> {
     if (
       !this.wallet ||
       !this.client ||
@@ -340,8 +421,7 @@ export class EERC {
         this.wallet.account.address,
         tokenAddress,
       );
-
-      console.log("enc", encryptedBalance);
+      const tokenId = await this.tokenId(tokenAddress);
 
       const decryptedBalance = this.decryptContractBalance(encryptedBalance);
       const privateKey = formatKeyForCurve(this.decryptionKey);
@@ -416,43 +496,26 @@ export class EERC {
         wasmPath,
         zkeyPath,
       );
-      console.log("proof", proof);
 
-      /**
-       * const input = {
-                obd: String(userWhole),
-                obf: String(userFractional),
-                old_balance_tot: userOldTotalBalance.toString(),
-                new_balance_float: userFractionalNew.toString(),
-                new_balance_dec: userWholeNew.toString(),
-                ad: withdrawAmountWhole.toString(),
-                af: withdrawAmountFractional.toString(),
-                a1_dec: toBeSubtracted[0].toString(),
-                a1_float: toBeSubtracted[1].toString(),
-                a2_dec: toBeAdded[0].toString(),
-                a2_float: toBeAdded[1].toString(),
-                obd_c1: [userOldEncryptedBalance.whole.c1[0], userOldEncryptedBalance.whole.c1[1]].map(String),
-                obd_c2: [userOldEncryptedBalance.whole.c2[0], userOldEncryptedBalance.whole.c2[1]].map(String),
-                obf_c1: [userOldEncryptedBalance.fractional.c1[0], userOldEncryptedBalance.fractional.c1[1]].map(
-                    String,
-                ),
-                obf_c2: [userOldEncryptedBalance.fractional.c2[0], userOldEncryptedBalance.fractional.c2[1]].map(
-                    String,
-                ),
-                a1_dec_c1: toBeSubtractedEncrypted[0][0].map(String),
-                a1_dec_c2: toBeSubtractedEncrypted[0][1].map(String),
-                a1_float_c1: toBeSubtractedEncrypted[1][0].map(String),
-                a1_float_c2: toBeSubtractedEncrypted[1][1].map(String),
-                a2_dec_c1: toBeAddedEncrypted[0][0].map(String),
-                a2_dec_c2: toBeAddedEncrypted[0][1].map(String),
-                a2_float_c1: toBeAddedEncrypted[1][0].map(String),
-                a2_float_c2: toBeAddedEncrypted[1][1].map(String),
-                ...user.toZkInput(true),
-            };
+      const transactionHash = await this.wallet.writeContract({
+        abi: this.abi,
+        address: this.contractAddress,
+        functionName: "withdraw",
+        args: [
+          this.wallet.account.address,
+          {
+            a: proof.a,
+            b: proof.b,
+            c: proof.c,
+            inputs: proof.input,
+          },
+          tokenId,
+        ],
+      });
 
-       */
+      return { transactionHash };
     } catch (e) {
-      console.log(e);
+      throw new Error(e as string);
     }
   }
 
@@ -640,5 +703,16 @@ export class EERC {
     });
 
     return data as EncryptedBalance;
+  }
+
+  async tokenId(tokenAddress: string) {
+    const data = await this.client.readContract({
+      abi: this.abi,
+      address: this.contractAddress as `0x${string}`,
+      functionName: "tokenIds",
+      args: [tokenAddress as `0x${string}`],
+    });
+
+    return data as bigint;
   }
 }

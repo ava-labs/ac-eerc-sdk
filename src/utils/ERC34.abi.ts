@@ -84,7 +84,7 @@ export const ERC34_ABI = [
   },
   {
     inputs: [],
-    name: "ParamatersAlreadySet",
+    name: "ParametersAlreadySet",
     type: "error",
   },
   {
@@ -1066,16 +1066,6 @@ export const ERC34_ABI = [
         internalType: "struct BurnProof",
         name: "_proof",
         type: "tuple",
-      },
-      {
-        internalType: "uint256",
-        name: "_whole",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "_fractional",
-        type: "uint256",
       },
       {
         internalType: "uint256",

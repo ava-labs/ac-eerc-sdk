@@ -100,6 +100,27 @@ export function useEERC(
     [eerc, encryptedBalance, decryptedBalance, auditorPublicKey],
   );
 
+  const transferToken = useCallback(
+    (
+      to: string,
+      amount: bigint,
+      wasmPath: string,
+      zkeyPath: string,
+      tokenAddress: string,
+    ) => {
+      if (!eerc) return;
+      return eerc.transferToken(
+        to,
+        amount,
+        auditorPublicKey,
+        wasmPath,
+        zkeyPath,
+        tokenAddress,
+      );
+    },
+    [eerc, auditorPublicKey],
+  );
+
   const deposit = useCallback(
     (amount: bigint, tokenAddress: string) => {
       if (!eerc) return;
@@ -195,32 +216,19 @@ export function useEERC(
     watch: false,
   });
 
-  // returns the hook for the
-  // encrypted balance of the given token id
+  const balanceOf = useCallback(() => {
+    return useEncryptedBalanceWithTokenId(
+      eerc,
+      contractAddress,
+      wallet,
+      true,
+      0n,
+    );
+  }, [eerc, contractAddress, wallet]);
+
   const getEncryptedBalance = useCallback(
-    (tokenId: bigint) => {
-      return useEncryptedBalanceWithTokenId(
-        eerc,
-        contractAddress,
-        wallet,
-        true,
-        tokenId,
-      );
-    },
-    [eerc, contractAddress, wallet],
-  );
-
-  // returns the hook for the encrypted balance of token id 0 (only for standalone version)
-  const balanceOf = useEncryptedBalanceWithTokenId(
-    eerc,
-    contractAddress,
-    wallet,
-    !!(isInitialized && isRegistered && wallet && contractAddress),
-    0n,
-  );
-
-  const getEncryptedTokenBalance = useCallback(
     (tokenAddress: string) => {
+      if (!eerc?.isConverter) return null;
       return useEncryptedBalanceWithAddress(
         eerc,
         contractAddress,
@@ -239,15 +247,15 @@ export function useEERC(
     encryptedBalance,
 
     // hooks
-    getEncryptedBalance,
     balanceOf,
-    getEncryptedTokenBalance,
+    getEncryptedBalance,
 
     // functions
     register,
     privateMint,
     privateBurn,
     transfer,
+    transferToken,
     deposit,
     withdraw,
   };
