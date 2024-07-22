@@ -228,7 +228,6 @@ export function useEERC(
 
   const getEncryptedBalance = useCallback(
     (tokenAddress: string) => {
-      if (!eerc?.isConverter) return null;
       return useEncryptedBalanceWithAddress(
         eerc,
         contractAddress,
