@@ -1,5 +1,10 @@
 import { isAddress } from "ethers";
-import { type PublicClient, type WalletClient, useContractRead } from "wagmi";
+import {
+  type PublicClient,
+  type WalletClient,
+  erc20ABI,
+  useContractRead,
+} from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { BSGS } from "./crypto/bsgs";
 import { FF } from "./crypto/ff";
@@ -75,8 +80,9 @@ export class EERC {
     if (!this.wallet || !this.client || !this.contractAddress)
       throw new Error("Missing client, wallet or contract address!");
 
-    if (this.publicKey.length)
-      throw new Error("User already registered to the contract!");
+    // if (this.publicKey.length) {
+    // const = await this.fetchPublicKey
+    // }
 
     try {
       // message to sign
@@ -96,7 +102,7 @@ export class EERC {
       };
 
       // proof generated for the transaction
-      const proof = await this.proofGenerator.generateRegisterProof(
+      const proof = await this.proofGenerator.generateProof(
         input,
         wasmPath,
         zkeyPath,
@@ -174,7 +180,7 @@ export class EERC {
       auditorEncKeyRandom: encryptionRandom.toString(),
     };
 
-    const proof = await this.proofGenerator.generateMintProof(
+    const proof = await this.proofGenerator.generateProof(
       input,
       wasmPath,
       zkeyPath,
@@ -279,6 +285,177 @@ export class EERC {
     return { transactionHash };
   }
 
+  // function to deposit tokens to the contract
+  async deposit(amount: bigint, tokenAddress: string) {
+    if (
+      !this.wallet ||
+      !this.client ||
+      !this.contractAddress ||
+      !this.decryptionKey
+    )
+      throw new Error(
+        "Missing client, wallet, contract address or decryption key!",
+      );
+
+    // check if the user has enough approve amount
+    const approveAmount = await this.fetchUserApprove(
+      this.wallet.account.address,
+      tokenAddress,
+    );
+
+    if (approveAmount < amount) {
+      throw new Error("Insufficient approval amount!");
+    }
+
+    const transactionHash = await this.wallet.writeContract({
+      abi: this.abi,
+      address: this.contractAddress as `0x${string}`,
+      functionName: "deposit",
+      args: [amount, tokenAddress],
+    });
+
+    return { transactionHash };
+  }
+
+  // function to deposit tokens to the contract
+  async withdraw(
+    amount: bigint,
+    auditorPublicKey: bigint[],
+    wasmPath: string,
+    zkeyPath: string,
+    tokenAddress: string,
+  ) {
+    if (
+      !this.wallet ||
+      !this.client ||
+      !this.contractAddress ||
+      !this.decryptionKey
+    )
+      throw new Error(
+        "Missing client, wallet, contract address or decryption key!",
+      );
+
+    try {
+      const encryptedBalance = await this.fetchUserBalance(
+        this.wallet.account.address,
+        tokenAddress,
+      );
+
+      console.log("enc", encryptedBalance);
+
+      const decryptedBalance = this.decryptContractBalance(encryptedBalance);
+      const privateKey = formatKeyForCurve(this.decryptionKey);
+      const [withdrawWhole, withdrawFractional] = Scalar.recalculate(amount);
+      const senderTotalBalance = Scalar.calculate(
+        decryptedBalance[0],
+        decryptedBalance[1],
+      );
+
+      if (amount > senderTotalBalance) throw new Error("Insufficient balance!");
+
+      const [toBeSubtracted, toBeAdded] = Scalar.decide(
+        decryptedBalance[0],
+        decryptedBalance[1],
+        withdrawWhole,
+        withdrawFractional,
+      );
+
+      const senderNewBalance = senderTotalBalance - amount;
+      const [newWhole, newFractional] = Scalar.recalculate(senderNewBalance);
+
+      const toBeSubtractedEncrypted = await this.curve.encryptArray(
+        toBeSubtracted,
+        this.publicKey as Point,
+      );
+      const toBeAddedEncrypted = await this.curve.encryptArray(
+        toBeAdded,
+        this.publicKey as Point,
+      );
+
+      const input = {
+        obd: decryptedBalance[0].toString(),
+        obf: decryptedBalance[1].toString(),
+        old_balance_tot: senderTotalBalance.toString(),
+        new_balance_dec: newWhole.toString(),
+        new_balance_float: newFractional.toString(),
+        ad: withdrawWhole.toString(),
+        af: withdrawFractional.toString(),
+        a1_dec: toBeSubtracted[0].toString(),
+        a1_float: toBeSubtracted[1].toString(),
+        a2_dec: toBeAdded[0].toString(),
+        a2_float: toBeAdded[1].toString(),
+        sender_sk: privateKey.toString(),
+        sender_pk: this.publicKey.map(String),
+        obd_c1: [encryptedBalance[0].c1.x, encryptedBalance[0].c1.y].map(
+          String,
+        ),
+        obd_c2: [encryptedBalance[0].c2.x, encryptedBalance[0].c2.y].map(
+          String,
+        ),
+
+        obf_c1: [encryptedBalance[1].c1.x, encryptedBalance[1].c1.y].map(
+          String,
+        ),
+        obf_c2: [encryptedBalance[1].c2.x, encryptedBalance[1].c2.y].map(
+          String,
+        ),
+
+        a1_dec_c1: toBeSubtractedEncrypted.cipher[0].c1.map(String),
+        a1_dec_c2: toBeSubtractedEncrypted.cipher[0].c2.map(String),
+        a1_float_c1: toBeSubtractedEncrypted.cipher[1].c1.map(String),
+        a1_float_c2: toBeSubtractedEncrypted.cipher[1].c2.map(String),
+
+        a2_dec_c1: toBeAddedEncrypted.cipher[0].c1.map(String),
+        a2_dec_c2: toBeAddedEncrypted.cipher[0].c2.map(String),
+        a2_float_c1: toBeAddedEncrypted.cipher[1].c1.map(String),
+        a2_float_c2: toBeAddedEncrypted.cipher[1].c2.map(String),
+      };
+
+      const proof = await this.proofGenerator.generateProof(
+        input,
+        wasmPath,
+        zkeyPath,
+      );
+      console.log("proof", proof);
+
+      /**
+       * const input = {
+                obd: String(userWhole),
+                obf: String(userFractional),
+                old_balance_tot: userOldTotalBalance.toString(),
+                new_balance_float: userFractionalNew.toString(),
+                new_balance_dec: userWholeNew.toString(),
+                ad: withdrawAmountWhole.toString(),
+                af: withdrawAmountFractional.toString(),
+                a1_dec: toBeSubtracted[0].toString(),
+                a1_float: toBeSubtracted[1].toString(),
+                a2_dec: toBeAdded[0].toString(),
+                a2_float: toBeAdded[1].toString(),
+                obd_c1: [userOldEncryptedBalance.whole.c1[0], userOldEncryptedBalance.whole.c1[1]].map(String),
+                obd_c2: [userOldEncryptedBalance.whole.c2[0], userOldEncryptedBalance.whole.c2[1]].map(String),
+                obf_c1: [userOldEncryptedBalance.fractional.c1[0], userOldEncryptedBalance.fractional.c1[1]].map(
+                    String,
+                ),
+                obf_c2: [userOldEncryptedBalance.fractional.c2[0], userOldEncryptedBalance.fractional.c2[1]].map(
+                    String,
+                ),
+                a1_dec_c1: toBeSubtractedEncrypted[0][0].map(String),
+                a1_dec_c2: toBeSubtractedEncrypted[0][1].map(String),
+                a1_float_c1: toBeSubtractedEncrypted[1][0].map(String),
+                a1_float_c2: toBeSubtractedEncrypted[1][1].map(String),
+                a2_dec_c1: toBeAddedEncrypted[0][0].map(String),
+                a2_dec_c2: toBeAddedEncrypted[0][1].map(String),
+                a2_float_c1: toBeAddedEncrypted[1][0].map(String),
+                a2_float_c2: toBeAddedEncrypted[1][1].map(String),
+                ...user.toZkInput(true),
+            };
+
+       */
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
   // generating transfer proof for private burn and transfer
   async generateTransferProof(
     to: string,
@@ -377,7 +554,7 @@ export class EERC {
         auditorEncKey: encryptionKey.map(String),
       };
 
-      const proof = await this.proofGenerator.generateTransferProof(
+      const proof = await this.proofGenerator.generateProof(
         input,
         wasmPath,
         zkeyPath,
@@ -440,5 +617,28 @@ export class EERC {
       throw new Error("User not registered!");
 
     return [pk.x, pk.y];
+  }
+
+  // fetches users approval from erc20 token
+  async fetchUserApprove(userAddress: string, tokenAddress: string) {
+    const data = await this.client.readContract({
+      abi: erc20ABI,
+      address: tokenAddress as `0x${string}`,
+      functionName: "allowance",
+      args: [userAddress as `0x${string}`, this.contractAddress],
+    });
+
+    return data;
+  }
+
+  async fetchUserBalance(userAddress: string, tokenAddress: string) {
+    const data = await this.client.readContract({
+      abi: this.abi,
+      address: this.contractAddress as `0x${string}`,
+      functionName: "balanceOfFromAddress",
+      args: [userAddress as `0x${string}`, tokenAddress as `0x${string}`],
+    });
+
+    return data as EncryptedBalance;
   }
 }

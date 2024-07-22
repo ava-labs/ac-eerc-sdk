@@ -1,9 +1,12 @@
+import { isAddress } from "ethers";
 import { useCallback, useEffect, useState } from "react";
 import { type PublicClient, type WalletClient, useContractRead } from "wagmi";
 import { EERC } from "../EERC";
 import { Scalar } from "../crypto/scalar";
 import type { Point } from "../crypto/types";
 import type { EncryptedBalance } from "./types";
+import { useEncryptedBalanceWithTokenId } from "./useEncryptedBalance";
+import { useEncryptedBalanceWithAddress } from "./useEncryptedBalanceWithTokenId";
 
 export function useEERC(
   client: PublicClient,
@@ -97,6 +100,33 @@ export function useEERC(
     [eerc, encryptedBalance, decryptedBalance, auditorPublicKey],
   );
 
+  const deposit = useCallback(
+    (amount: bigint, tokenAddress: string) => {
+      if (!eerc) return;
+      return eerc?.deposit(amount, tokenAddress);
+    },
+    [eerc],
+  );
+
+  const withdraw = useCallback(
+    (
+      amount: bigint,
+      tokenAddress: string,
+      wasmPath: string,
+      zkeyPath: string,
+    ) => {
+      if (!eerc) return;
+      return eerc?.withdraw(
+        amount,
+        auditorPublicKey,
+        wasmPath,
+        zkeyPath,
+        tokenAddress,
+      );
+    },
+    [eerc, auditorPublicKey],
+  );
+
   // check if the user is registered or not
   useContractRead({
     address: contractAddress as `0x${string}`,
@@ -112,7 +142,7 @@ export function useEERC(
     },
   });
 
-  // user encrypted balance (standalone version)
+  // user encrypted balance (for standalone version)
   useContractRead({
     address: contractAddress as `0x${string}`,
     abi: eerc?.abi,
@@ -165,15 +195,60 @@ export function useEERC(
     watch: false,
   });
 
+  // returns the hook for the
+  // encrypted balance of the given token id
+  const getEncryptedBalance = useCallback(
+    (tokenId: bigint) => {
+      return useEncryptedBalanceWithTokenId(
+        eerc,
+        contractAddress,
+        wallet,
+        true,
+        tokenId,
+      );
+    },
+    [eerc, contractAddress, wallet],
+  );
+
+  // returns the hook for the encrypted balance of token id 0 (only for standalone version)
+  const balanceOf = useEncryptedBalanceWithTokenId(
+    eerc,
+    contractAddress,
+    wallet,
+    !!(isInitialized && isRegistered && wallet && contractAddress),
+    0n,
+  );
+
+  const getEncryptedTokenBalance = useCallback(
+    (tokenAddress: string) => {
+      return useEncryptedBalanceWithAddress(
+        eerc,
+        contractAddress,
+        wallet,
+        true,
+        tokenAddress,
+      );
+    },
+    [eerc, contractAddress, wallet],
+  );
+
   return {
+    isInitialized,
     isRegistered,
     decryptedBalance: parsedDecryptedBalance,
     encryptedBalance,
+
+    // hooks
+    getEncryptedBalance,
+    balanceOf,
+    getEncryptedTokenBalance,
 
     // functions
     register,
     privateMint,
     privateBurn,
     transfer,
+    deposit,
+    withdraw,
   };
 }

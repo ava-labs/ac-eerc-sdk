@@ -3,43 +3,12 @@ import type { IProof } from "./types";
 
 export class ProofGenerator {
   // generates register proof using wasm & zkey files
-  async generateRegisterProof(
-    input: object,
-    wasmPath: string,
-    zkeyPath: string,
-  ) {
+  async generateProof(input: object, wasmPath: string, zkeyPath: string) {
     const { proof, publicSignals } = await groth16.fullProve(
       input,
       wasmPath,
       zkeyPath,
     );
-    const calldata = await groth16.exportSolidityCallData(proof, publicSignals);
-    return this.convertCallData(calldata);
-  }
-
-  // generates mint proof using wasm & zkey files
-  async generateMintProof(input: object, wasmPath: string, zkeyPath: string) {
-    const { proof, publicSignals } = await groth16.fullProve(
-      input,
-      wasmPath,
-      zkeyPath,
-    );
-
-    const calldata = await groth16.exportSolidityCallData(proof, publicSignals);
-    return this.convertCallData(calldata);
-  }
-
-  async generateTransferProof(
-    input: object,
-    wasmPath: string,
-    zkeyPath: string,
-  ) {
-    const { proof, publicSignals } = await groth16.fullProve(
-      input,
-      wasmPath,
-      zkeyPath,
-    );
-
     const calldata = await groth16.exportSolidityCallData(proof, publicSignals);
     return this.convertCallData(calldata);
   }

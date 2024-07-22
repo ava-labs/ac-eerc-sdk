@@ -430,6 +430,107 @@ export const ERC34_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "_account",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "_tokenAddress",
+        type: "address",
+      },
+    ],
+    name: "balanceOfFromAddress",
+    outputs: [
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256",
+                name: "x",
+                type: "uint256",
+              },
+              {
+                internalType: "uint256",
+                name: "y",
+                type: "uint256",
+              },
+            ],
+            internalType: "struct Point",
+            name: "c1",
+            type: "tuple",
+          },
+          {
+            components: [
+              {
+                internalType: "uint256",
+                name: "x",
+                type: "uint256",
+              },
+              {
+                internalType: "uint256",
+                name: "y",
+                type: "uint256",
+              },
+            ],
+            internalType: "struct Point",
+            name: "c2",
+            type: "tuple",
+          },
+        ],
+        internalType: "struct CipherText",
+        name: "whole",
+        type: "tuple",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256",
+                name: "x",
+                type: "uint256",
+              },
+              {
+                internalType: "uint256",
+                name: "y",
+                type: "uint256",
+              },
+            ],
+            internalType: "struct Point",
+            name: "c1",
+            type: "tuple",
+          },
+          {
+            components: [
+              {
+                internalType: "uint256",
+                name: "x",
+                type: "uint256",
+              },
+              {
+                internalType: "uint256",
+                name: "y",
+                type: "uint256",
+              },
+            ],
+            internalType: "struct Point",
+            name: "c2",
+            type: "tuple",
+          },
+        ],
+        internalType: "struct CipherText",
+        name: "fractional",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "burnVerifier",
     outputs: [
