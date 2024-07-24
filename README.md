@@ -6,7 +6,8 @@ To install dependencies:
 bun install
 ```
 
-## Usage
+## Usage
+
 ```js
   const { data: walletClient } = dappService.useWalletClient();
   const { publicClient } = dappService.usePublicClient();
