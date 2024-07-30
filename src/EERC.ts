@@ -1,10 +1,5 @@
 import { isAddress } from "ethers";
-import {
-  type PublicClient,
-  type WalletClient,
-  erc20ABI,
-  useContractRead,
-} from "wagmi";
+import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { BSGS } from "./crypto/bsgs";
 import { FF } from "./crypto/ff";
@@ -79,10 +74,6 @@ export class EERC {
   }> {
     if (!this.wallet || !this.client || !this.contractAddress)
       throw new Error("Missing client, wallet or contract address!");
-
-    // if (this.publicKey.length) {
-    // const = await this.fetchPublicKey
-    // }
 
     try {
       // message to sign
@@ -401,7 +392,6 @@ export class EERC {
   // function to deposit tokens to the contract
   async withdraw(
     amount: bigint,
-    auditorPublicKey: bigint[],
     wasmPath: string,
     zkeyPath: string,
     tokenAddress: string,
