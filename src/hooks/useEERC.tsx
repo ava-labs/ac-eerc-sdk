@@ -60,11 +60,17 @@ export function useEERC(
     },
   });
 
+  const useEncryptedBalanceHook = (tokenAddress?: `0x${string}`) =>
+    useEncryptedBalance(eerc, contractAddress, wallet, tokenAddress);
+
   return {
     isInitialized,
     isRegistered,
 
     // functions
     register,
+
+    // hooks
+    useEncryptedBalance: useEncryptedBalanceHook,
   };
 }

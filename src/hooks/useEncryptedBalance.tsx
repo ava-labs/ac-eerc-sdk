@@ -156,7 +156,14 @@ export function useEncryptedBalance(
     (amount: bigint, wasmPath: string, zkeyPath: string) => {
       if (!eerc || !tokenAddress) return;
 
-      return eerc.withdraw(amount, wasmPath, zkeyPath, tokenAddress);
+      return eerc.withdraw(
+        amount,
+        encryptedBalance,
+        decryptedBalance,
+        wasmPath,
+        zkeyPath,
+        tokenAddress,
+      );
     },
     [eerc, encryptedBalance, decryptedBalance, tokenAddress],
   );
@@ -172,5 +179,7 @@ export function useEncryptedBalance(
     privateMint,
     privateBurn,
     transfer,
+    withdraw,
+    deposit,
   };
 }

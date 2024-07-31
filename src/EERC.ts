@@ -392,6 +392,8 @@ export class EERC {
   // function to deposit tokens to the contract
   async withdraw(
     amount: bigint,
+    encryptedBalance: bigint[],
+    decryptedBalance: bigint[],
     wasmPath: string,
     zkeyPath: string,
     tokenAddress: string,
@@ -407,13 +409,8 @@ export class EERC {
       );
 
     try {
-      const encryptedBalance = await this.fetchUserBalance(
-        this.wallet.account.address,
-        tokenAddress,
-      );
       const tokenId = await this.tokenId(tokenAddress);
 
-      const decryptedBalance = this.decryptContractBalance(encryptedBalance);
       const privateKey = formatKeyForCurve(this.decryptionKey);
       const [withdrawWhole, withdrawFractional] = Scalar.recalculate(amount);
       const senderTotalBalance = Scalar.calculate(
@@ -456,19 +453,11 @@ export class EERC {
         a2_float: toBeAdded[1].toString(),
         sender_sk: privateKey.toString(),
         sender_pk: this.publicKey.map(String),
-        obd_c1: [encryptedBalance[0].c1.x, encryptedBalance[0].c1.y].map(
-          String,
-        ),
-        obd_c2: [encryptedBalance[0].c2.x, encryptedBalance[0].c2.y].map(
-          String,
-        ),
+        obd_c1: [encryptedBalance[0], encryptedBalance[1]].map(String),
+        obd_c2: [encryptedBalance[2], encryptedBalance[3]].map(String),
 
-        obf_c1: [encryptedBalance[1].c1.x, encryptedBalance[1].c1.y].map(
-          String,
-        ),
-        obf_c2: [encryptedBalance[1].c2.x, encryptedBalance[1].c2.y].map(
-          String,
-        ),
+        obf_c1: [encryptedBalance[4], encryptedBalance[5]].map(String),
+        obf_c2: [encryptedBalance[6], encryptedBalance[7]].map(String),
 
         a1_dec_c1: toBeSubtractedEncrypted.cipher[0].c1.map(String),
         a1_dec_c2: toBeSubtractedEncrypted.cipher[0].c2.map(String),
