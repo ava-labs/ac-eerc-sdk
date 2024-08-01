@@ -9,23 +9,21 @@ bun install
 ## Usage
 
 ```js
-  const { data: walletClient } = dappService.useWalletClient();
   const { publicClient } = dappService.usePublicClient();
+  const { data: walletClient } = dappService.useWalletClient();
   const {
-    // both
     isRegistered,
+    isInitialized,
+    isConverter,
     register,
+    useEncryptedBalance,
+    setAuditor,
+    isAuditorKeySet,
 
-    // only for converter version
-    deposit,
-    withdraw,
-    getEncryptedBalance,
-    transfer,
-
-    // only for standalone version
-    balanceOf,
-    transferToken,
-    privateMint,
-    privateBurn,
-  } = useEERC(publicClient, walletClient, contractAddress as `0x${string}`, false, decryptionKey);
+    publicKey,
+    auditorDecrypt,
+  } = useEERC(publicClient, walletClient, contractAddress, decryptionKey);
+  const { parsedDecryptedBalance, isDecrypting, privateMint, privateBurn, privateTransfer } = useEncryptedBalance();
+  // or for the converter version
+  const { parsedDecryptedBalance, isDecrypting, privateMint, privateBurn, privateTransfer } = useEncryptedBalance(tokenAddress);
 ```
