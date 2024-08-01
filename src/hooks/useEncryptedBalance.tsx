@@ -75,20 +75,15 @@ export function useEncryptedBalance(
   }, [contractBalance, eerc, encryptedBalance]);
 
   const privateMint = useCallback(
-    (amount: bigint, wasmPath: string, zkeyPath: string) => {
+    (amount: bigint) => {
       if (!eerc || !auditorPublicKey) return;
-      return eerc.privateMint(
-        amount,
-        wasmPath,
-        zkeyPath,
-        auditorPublicKey as Point,
-      );
+      return eerc.privateMint(amount, auditorPublicKey as Point);
     },
     [eerc, auditorPublicKey],
   );
 
   const privateBurn = useCallback(
-    (amount: bigint, wasmPath: string, zkeyPath: string) => {
+    (amount: bigint) => {
       if (
         !eerc ||
         !auditorPublicKey ||
@@ -102,15 +97,13 @@ export function useEncryptedBalance(
         encryptedBalance,
         decryptedBalance,
         auditorPublicKey as Point,
-        wasmPath,
-        zkeyPath,
       );
     },
     [eerc, auditorPublicKey, encryptedBalance, decryptedBalance],
   );
 
-  const transfer = useCallback(
-    (to: string, amount: bigint, wasmPath: string, zkeyPath: string) => {
+  const privateTransfer = useCallback(
+    (to: string, amount: bigint) => {
       if (
         !eerc ||
         !auditorPublicKey ||
@@ -124,8 +117,6 @@ export function useEncryptedBalance(
           to,
           amount,
           auditorPublicKey as Point,
-          wasmPath,
-          zkeyPath,
           tokenAddress,
         );
       }
@@ -136,8 +127,6 @@ export function useEncryptedBalance(
         encryptedBalance,
         decryptedBalance,
         auditorPublicKey as Point,
-        wasmPath,
-        zkeyPath,
       );
     },
     [eerc, auditorPublicKey, encryptedBalance, decryptedBalance, tokenAddress],
@@ -153,15 +142,13 @@ export function useEncryptedBalance(
 
   // need to change withdraw parameters
   const withdraw = useCallback(
-    (amount: bigint, wasmPath: string, zkeyPath: string) => {
+    (amount: bigint) => {
       if (!eerc || !tokenAddress) return;
 
       return eerc.withdraw(
         amount,
         encryptedBalance,
         decryptedBalance,
-        wasmPath,
-        zkeyPath,
         tokenAddress,
       );
     },
@@ -178,7 +165,7 @@ export function useEncryptedBalance(
     // functions
     privateMint,
     privateBurn,
-    transfer,
+    privateTransfer,
     withdraw,
     deposit,
   };

@@ -4,3 +4,10 @@ export type IProof = {
   c: string[];
   input: string[];
 };
+
+export enum ProofType {
+  REGISTER = "register",
+  BURN = "burn",
+  TRANSFER = "transfer",
+  MINT = "mint",
+}

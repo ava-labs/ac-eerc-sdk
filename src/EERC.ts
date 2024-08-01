@@ -1,4 +1,5 @@
 import { isAddress } from "ethers";
+import type { Log } from "viem";
 import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { BSGS } from "./crypto/bsgs";
@@ -8,7 +9,7 @@ import { Poseidon } from "./crypto/poseidon";
 import { Scalar } from "./crypto/scalar";
 import type { Point } from "./crypto/types";
 import { ProofGenerator } from "./helpers";
-import type { IProof } from "./helpers/types";
+import { ProofType } from "./helpers/types";
 import type { EncryptedBalance } from "./hooks/types";
 import { ERC34_ABI, MESSAGES, SNARK_FIELD_SIZE } from "./utils";
 
@@ -36,7 +37,7 @@ export class EERC {
 
   // user field
   private decryptionKey: string;
-  private publicKey: bigint[] = [];
+  public publicKey: bigint[] = [];
 
   constructor(
     client: PublicClient,
@@ -63,13 +64,9 @@ export class EERC {
   }
 
   // function to register a new user to the contract
-  async register(
-    wasmPath: string,
-    zkeyPath: string,
-  ): Promise<{
+  async register(): Promise<{
     key: string;
     error: string;
-    proof: IProof | null;
     transactionHash: string;
   }> {
     if (!this.wallet || !this.client || !this.contractAddress)
@@ -94,9 +91,8 @@ export class EERC {
 
       // proof generated for the transaction
       const proof = await this.proofGenerator.generateProof(
+        ProofType.REGISTER,
         input,
-        wasmPath,
-        zkeyPath,
       );
 
       const check = async () => {
@@ -118,7 +114,6 @@ export class EERC {
         return {
           key,
           error: "User already registered!",
-          proof: null,
           transactionHash: "",
         };
       }
@@ -134,7 +129,7 @@ export class EERC {
       this.publicKey = publicKey;
 
       // returns proof for the transaction
-      return { key, error: "", proof, transactionHash };
+      return { key, error: "", transactionHash };
     } catch (e) {
       throw new Error(e as string);
     }
@@ -148,8 +143,6 @@ export class EERC {
   //         50 = 0.50
   async privateMint(
     totalMintAmount: bigint,
-    wasmPath: string,
-    zkeyPath: string,
     auditorPublicKey: Point,
   ): Promise<{ transactionHash: string }> {
     if (this.isConverter) throw new Error("Not allowed for converter!");
@@ -196,9 +189,8 @@ export class EERC {
     };
 
     const proof = await this.proofGenerator.generateProof(
+      ProofType.MINT,
       input,
-      wasmPath,
-      zkeyPath,
     );
 
     // write the transaction to the contract
@@ -227,8 +219,6 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint[],
     auditorPublicKey: bigint[],
-    wasmPath: string,
-    zkeyPath: string,
   ) {
     if (this.isConverter) throw new Error("Not allowed for converter!");
     if (
@@ -247,8 +237,6 @@ export class EERC {
       encryptedBalance,
       decryptedBalance,
       auditorPublicKey,
-      wasmPath,
-      zkeyPath,
     );
 
     const transactionHash = await this.wallet.writeContract({
@@ -267,8 +255,6 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint[],
     auditorPublicKey: bigint[],
-    wasmPath: string,
-    zkeyPath: string,
     tokenId = 0n,
   ) {
     if (
@@ -287,8 +273,6 @@ export class EERC {
       encryptedBalance,
       decryptedBalance,
       auditorPublicKey,
-      wasmPath,
-      zkeyPath,
     );
 
     const transactionHash = await this.wallet.writeContract({
@@ -309,8 +293,6 @@ export class EERC {
     to: string,
     totalAmount: bigint,
     auditorPublicKey: bigint[],
-    wasmPath: string,
-    zkeyPath: string,
     tokenAddress: string,
   ) {
     if (
@@ -346,8 +328,6 @@ export class EERC {
         ],
         decryptedBalance,
         auditorPublicKey,
-        wasmPath,
-        zkeyPath,
         tokenId,
       );
 
@@ -394,8 +374,6 @@ export class EERC {
     amount: bigint,
     encryptedBalance: bigint[],
     decryptedBalance: bigint[],
-    wasmPath: string,
-    zkeyPath: string,
     tokenAddress: string,
   ): Promise<{ transactionHash: string }> {
     if (
@@ -471,9 +449,8 @@ export class EERC {
       };
 
       const proof = await this.proofGenerator.generateProof(
+        ProofType.BURN,
         input,
-        wasmPath,
-        zkeyPath,
       );
 
       const transactionHash = await this.wallet.writeContract({
@@ -505,8 +482,6 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint[],
     auditorPublicKey: bigint[],
-    wasmPath: string,
-    zkeyPath: string,
   ) {
     try {
       if (!isAddress(to)) throw new Error("Invalid receiver address!");
@@ -597,43 +572,14 @@ export class EERC {
       };
 
       const proof = await this.proofGenerator.generateProof(
+        ProofType.TRANSFER,
         input,
-        wasmPath,
-        zkeyPath,
       );
 
       return proof;
     } catch (e) {
       throw new Error(e as string);
     }
-  }
-
-  // decrypts user balance from the contract
-  decryptContractBalance(cipher: EncryptedBalance): [bigint, bigint] {
-    if (!this.decryptionKey) {
-      console.error("Missing decryption key!");
-      return [0n, 0n];
-    }
-
-    const privateKey = formatKeyForCurve(this.decryptionKey);
-    const wholeCipher = cipher[0];
-    const fractionalCipher = cipher[1];
-
-    // decrypts the balance using the decryption key
-    const wholePoint = this.curve.elGamalDecryption(privateKey, {
-      c1: [wholeCipher.c1.x, wholeCipher.c1.y],
-      c2: [wholeCipher.c2.x, wholeCipher.c2.y],
-    });
-    const fractionalPoint = this.curve.elGamalDecryption(privateKey, {
-      c1: [fractionalCipher.c1.x, fractionalCipher.c1.y],
-      c2: [fractionalCipher.c2.x, fractionalCipher.c2.y],
-    });
-
-    // doing bsgs
-    const whole = BSGS.do(wholePoint, this.curve);
-    const fractional = BSGS.do(fractionalPoint, this.curve);
-
-    return [whole, fractional];
   }
 
   // fetches the user public key from the contract
@@ -693,5 +639,86 @@ export class EERC {
     });
 
     return data as bigint;
+  }
+
+  // decrypts user balance from the contract
+  decryptContractBalance(cipher: EncryptedBalance): [bigint, bigint] {
+    if (!this.decryptionKey) {
+      console.error("Missing decryption key!");
+      return [0n, 0n];
+    }
+
+    const privateKey = formatKeyForCurve(this.decryptionKey);
+    const wholeCipher = cipher[0];
+    const fractionalCipher = cipher[1];
+
+    // decrypts the balance using the decryption key
+    const wholePoint = this.curve.elGamalDecryption(privateKey, {
+      c1: [wholeCipher.c1.x, wholeCipher.c1.y],
+      c2: [wholeCipher.c2.x, wholeCipher.c2.y],
+    });
+    const fractionalPoint = this.curve.elGamalDecryption(privateKey, {
+      c1: [fractionalCipher.c1.x, fractionalCipher.c1.y],
+      c2: [fractionalCipher.c2.x, fractionalCipher.c2.y],
+    });
+
+    // doing bsgs
+    const whole = BSGS.do(wholePoint, this.curve);
+    const fractional = BSGS.do(fractionalPoint, this.curve);
+
+    return [whole, fractional];
+  }
+
+  // decrypts the PCT of the transactions
+  // only the auditor can decrypt the pct and get the details of the transaction
+  async auditorDecrypt() {
+    if (!this.decryptionKey) throw new Error("Missing decryption key!");
+    const privateKey = formatKeyForCurve(this.decryptionKey);
+
+    type NamedEvents = Log & {
+      eventName: string;
+      args: { auditorPCT: bigint[] };
+    };
+
+    const result = [];
+
+    try {
+      const currentBlock = await this.client.getBlockNumber();
+      const events = ERC34_ABI.filter((element) => element.type === "event");
+
+      const logs = (await this.client.getLogs({
+        address: this.contractAddress,
+        fromBlock: currentBlock - 50n,
+        toBlock: currentBlock,
+        events,
+      })) as NamedEvents[];
+
+      for (const log of logs) {
+        const name = log?.eventName;
+        if (!name) continue;
+        const pct = log?.args?.auditorPCT as bigint[];
+        if (!pct || pct?.length !== 7) continue;
+
+        const cipher = pct.slice(0, 4) as bigint[];
+        const authKey = pct.slice(-3, -1) as Point;
+        const nonce = pct[pct.length - 1] as bigint;
+        const length = 2; // decrypted length
+
+        const [whole, fractional] = this.poseidon.processPoseidonDecryption({
+          privateKey,
+          authKey,
+          cipher,
+          nonce,
+          length,
+        });
+
+        const amount = Scalar.calculate(whole, fractional);
+        result.push({ hash: log.transactionHash, amount });
+      }
+
+      return result;
+    } catch (e) {
+      throw new Error(e as string);
+    }
   }
 }
