@@ -4,19 +4,16 @@ import { Scalar } from "./scalar";
 import type { ElGamalCipherText, Point } from "./types";
 
 export class BabyJub {
-  public field: FF;
-  public A: bigint;
-  public D: bigint;
+  public A = 168700n;
+  public D = 168696n;
 
   public Base8: Point = [
     5299619240641551281634865583518297030282874472190772894086521144482721001553n,
     16950150798460657717958625567821834550301663161624707787222815936182638968203n,
   ];
 
-  constructor(field: FF) {
+  constructor(public field: FF) {
     this.field = field;
-    this.A = 168700n;
-    this.D = 168696n;
   }
 
   static order() {

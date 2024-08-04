@@ -85,5 +85,6 @@ const calculateByteLength = (length: number, byteSize = 8) => {
 const hashKeyWithIndex = (key: string, index: number) => {
   const input = removeHexPrefix(key) + sanitizeBytes(numberToHex(index), 2);
   const buff = Buffer.from(removeHexPrefix(input), "hex");
-  return BigInt(`0x${sha256.update(buff).hex()}`);
+  const uint8Array = new Uint8Array(buff);
+  return BigInt(`0x${sha256.update(uint8Array).hex()}`);
 };

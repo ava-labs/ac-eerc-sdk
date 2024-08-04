@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useAsync } from "react-use";
 import { type WalletClient, useContractRead } from "wagmi";
 import type { EERC } from "../EERC";
 import { Scalar } from "../crypto/scalar";
@@ -51,28 +52,31 @@ export function useEncryptedBalance(
     );
 
     // if encrypted balance is not empty
-    if (encryptedBalance.length) {
+    if (encryptedBalance) {
       // if the encrypted balance is the same as the contract balance no need to decrypt
       if (parsedBalance.every((v, i) => v === encryptedBalance[i])) return;
     }
 
-    setIsDecrypting(true);
-    const bb = contractBalance as EncryptedBalance;
+    setEncryptedBalance(parsedBalance);
+  }, [contractBalance, encryptedBalance]);
 
-    const decBalance = eerc?.decryptContractBalance(bb);
+  useAsync(async () => {
+    if (!encryptedBalance.length || !eerc) return;
+
+    setIsDecrypting(true);
+    const decBalance = await eerc.decryptContractBalance(encryptedBalance);
     if (!decBalance) {
       setDecryptedBalance([]);
-      setEncryptedBalance([]);
       setParsedDecryptedBalance([]);
       return;
     }
-    setDecryptedBalance(decBalance);
 
     const parsedDecryptedBalance = Scalar.adjust(decBalance[0], decBalance[1]);
+
+    setDecryptedBalance(decBalance);
     setParsedDecryptedBalance(parsedDecryptedBalance);
-    setEncryptedBalance(parsedBalance);
     setIsDecrypting(false);
-  }, [contractBalance, eerc, encryptedBalance]);
+  }, [encryptedBalance, eerc]);
 
   const privateMint = useCallback(
     (amount: bigint) => {
@@ -118,6 +122,8 @@ export function useEncryptedBalance(
           amount,
           auditorPublicKey as Point,
           tokenAddress,
+          encryptedBalance,
+          decryptedBalance,
         );
       }
 

@@ -11,7 +11,12 @@ import type { Point } from "./crypto/types";
 import { ProofGenerator } from "./helpers";
 import { ProofType } from "./helpers/types";
 import type { EncryptedBalance } from "./hooks/types";
-import { ERC34_ABI, MESSAGES, SNARK_FIELD_SIZE } from "./utils";
+import {
+  ERC34_ABI,
+  LOOKUP_TABLE_URL,
+  MESSAGES,
+  SNARK_FIELD_SIZE,
+} from "./utils";
 
 export class EERC {
   private client: PublicClient;
@@ -20,6 +25,7 @@ export class EERC {
   public curve: BabyJub;
   public field: FF;
   public poseidon: Poseidon;
+  public bsgs: BSGS;
 
   public proofGenerator: ProofGenerator;
 
@@ -56,11 +62,16 @@ export class EERC {
     this.poseidon = new Poseidon(this.field, this.curve);
     this.proofGenerator = new ProofGenerator();
     this.decryptionKey = decryptionKey || "";
+    this.bsgs = new BSGS(LOOKUP_TABLE_URL, this.curve);
 
     if (this.decryptionKey) {
       const formatted = formatKeyForCurve(this.decryptionKey);
       this.publicKey = this.curve.generatePublicKey(formatted);
     }
+  }
+
+  async init() {
+    await this.bsgs.initialize();
   }
 
   // function to register a new user to the contract
@@ -294,6 +305,8 @@ export class EERC {
     totalAmount: bigint,
     auditorPublicKey: bigint[],
     tokenAddress: string,
+    encryptedBalance: bigint[],
+    decryptedBalance: bigint[],
   ) {
     if (
       !this.wallet ||
@@ -307,25 +320,11 @@ export class EERC {
 
     try {
       const tokenId = await this.tokenId(tokenAddress as string);
-      const encryptedBalance = await this.fetchUserBalance(
-        this.wallet.account.address,
-        tokenAddress,
-      );
-      const decryptedBalance = this.decryptContractBalance(encryptedBalance);
 
       const transactionHash = await this.transfer(
         to,
         totalAmount,
-        [
-          encryptedBalance[0].c1.x,
-          encryptedBalance[0].c1.y,
-          encryptedBalance[0].c2.x,
-          encryptedBalance[0].c2.y,
-          encryptedBalance[1].c1.x,
-          encryptedBalance[1].c1.y,
-          encryptedBalance[1].c2.x,
-          encryptedBalance[1].c2.y,
-        ],
+        encryptedBalance,
         decryptedBalance,
         auditorPublicKey,
         tokenId,
@@ -642,29 +641,29 @@ export class EERC {
   }
 
   // decrypts user balance from the contract
-  decryptContractBalance(cipher: EncryptedBalance): [bigint, bigint] {
+  async decryptContractBalance(cipher: bigint[]): Promise<[bigint, bigint]> {
     if (!this.decryptionKey) {
       console.error("Missing decryption key!");
       return [0n, 0n];
     }
 
     const privateKey = formatKeyForCurve(this.decryptionKey);
-    const wholeCipher = cipher[0];
-    const fractionalCipher = cipher[1];
 
     // decrypts the balance using the decryption key
     const wholePoint = this.curve.elGamalDecryption(privateKey, {
-      c1: [wholeCipher.c1.x, wholeCipher.c1.y],
-      c2: [wholeCipher.c2.x, wholeCipher.c2.y],
+      c1: [cipher[0], cipher[1]],
+      c2: [cipher[2], cipher[3]],
     });
     const fractionalPoint = this.curve.elGamalDecryption(privateKey, {
-      c1: [fractionalCipher.c1.x, fractionalCipher.c1.y],
-      c2: [fractionalCipher.c2.x, fractionalCipher.c2.y],
+      c1: [cipher[4], cipher[5]],
+      c2: [cipher[6], cipher[7]],
     });
 
     // doing bsgs
-    const whole = BSGS.do(wholePoint, this.curve);
-    const fractional = BSGS.do(fractionalPoint, this.curve);
+    const [whole, fractional] = await Promise.all([
+      this.bsgs.find(wholePoint),
+      this.bsgs.find(fractionalPoint),
+    ]);
 
     return [whole, fractional];
   }

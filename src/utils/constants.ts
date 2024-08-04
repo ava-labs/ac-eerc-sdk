@@ -7,3 +7,5 @@ export const MESSAGES = {
   REGISTER: (user: string, contract: string) =>
     `AvaCloud\nRegistering user with\n Address:${user.toLowerCase()}\nContract Address: ${contract.toLowerCase()}`,
 };
+
+export const LOOKUP_TABLE_URL = "http://127.0.0.1:5500/lookup_table.json";

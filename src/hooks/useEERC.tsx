@@ -76,16 +76,25 @@ export function useEERC(
 
   useEffect(() => {
     if (client && wallet && contractAddress && isConverter !== undefined) {
-      setEERC(
-        new EERC(
-          client,
-          wallet,
-          contractAddress as `0x${string}`,
-          isConverter as boolean,
-          decryptionKey,
-        ),
+      const _eerc = new EERC(
+        client,
+        wallet,
+        contractAddress as `0x${string}`,
+        isConverter as boolean,
+        decryptionKey,
       );
-      setIsInitialized(true);
+
+      _eerc
+        .init()
+        .then(() => {
+          setEERC(_eerc);
+          setIsInitialized(true);
+        })
+        .catch((error) => {
+          console.error("Failed to initialize EERC:", error);
+          setEERC(undefined);
+          setIsInitialized(false);
+        });
     }
 
     return () => {
