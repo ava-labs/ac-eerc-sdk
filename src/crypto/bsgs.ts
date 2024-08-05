@@ -1,4 +1,5 @@
 import xxhash from "xxhash-wasm";
+import { IndexedDBStorage } from "../helpers/storage";
 import type { BabyJub } from "./babyjub";
 import type { Point } from "./types";
 
@@ -11,15 +12,28 @@ export class BSGS {
   constructor(
     private tableUrl: string,
     private curve: BabyJub,
+    private storage = new IndexedDBStorage(),
   ) {}
 
   async initialize(): Promise<void> {
     try {
-      const response = await fetch(this.tableUrl);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // get table from indexed db
+      const tableFromDB = await this.storage.getTable();
+
+      // if table exists in indexed db, use it
+      if (tableFromDB) {
+        this.table = tableFromDB;
+        console.log("Recovered table from IndexedDB");
+      } else {
+        // if not found, fetch from the server
+        const response = await fetch(this.tableUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        this.table = await response.json();
+        // save table to indexed db
+        this.storage.saveTable(this.table as Record<string, number>);
       }
-      this.table = await response.json();
 
       const { h64Raw } = await xxhash();
       this.hash = (input: Uint8Array, seed?: bigint) =>
@@ -52,7 +66,6 @@ export class BSGS {
     //              120ms to find 500_000_000
     //              180ms to find 750_000_000
     //              200ms to find 1_000_000_000
-    // 1_099_511_627_775n / 250_000n = 4_398_046n
     const maxIterations = 4_000;
     let iteration = 0;
     let pp = point;
@@ -67,7 +80,6 @@ export class BSGS {
       }
 
       iteration++;
-      console.log("Iteration: ", iteration);
     }
 
     throw new Error("Scalar not found");
