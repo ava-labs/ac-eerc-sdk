@@ -5,7 +5,7 @@ import type { Point } from "./types";
 
 export class BSGS {
   private table: Record<string, number> | null = null;
-  private tableSize = 250_000n;
+  private tableSize = 500_000n;
   private hash: ((input: Uint8Array, seed?: bigint) => string) | null = null;
   private referencePoint: Point | null = null;
 
@@ -60,13 +60,16 @@ export class BSGS {
     if (value !== undefined) return BigInt(value);
 
     // for the practical implementation we will do max 2000 iterations
-    // which covers (250_000 * 4_000) = 1_000_000_000
-    // which is 1_000_000_000 dollars in the user's wallet
-    // takes around 67 ms to find 250_000_000
-    //              120ms to find 500_000_000
-    //              180ms to find 750_000_000
-    //              200ms to find 1_000_000_000
-    const maxIterations = 4_000;
+    // which covers (500_000 * 20_000) = 10_000_000_000
+    // which is 10_000_000_000 dollars in the user's wallet
+    // takes around 130ms to find 250_000_000
+    //              311ms to find 500_000_000
+    //              376ms to find 750_000_000
+    //              570ms to find 1_000_000_000
+    //              960ms to find 2_000_000_000
+    //              1287ms to find 5_000_000_000
+    const maxIterations = 20_000;
+
     let iteration = 0;
     let pp = point;
 

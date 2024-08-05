@@ -9,7 +9,7 @@ export class IndexedDBStorage {
   async saveTable(table: Record<string, number>): Promise<void> {
     const encodedTable = msgpack.encode(table);
     const totalSize = encodedTable.byteLength;
-    const chunkSize = 1024 * 1024; // 1MB chunks
+    const chunkSize = 1024 * 1024 * 2; // 2MB chunks
     const chunksCount = Math.ceil(totalSize / chunkSize);
 
     const db = await this.openDB();
