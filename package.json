@@ -4,6 +4,11 @@
   "module": "src/index.ts",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^18.3.3",
