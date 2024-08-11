@@ -1,7 +1,6 @@
 import createBlakeHash from "blake-hash";
 import { sha256 } from "js-sha256";
 import { SHA_256_MAX_DIGEST, SNARK_FIELD_SIZE } from "../utils";
-import { BabyJub } from "./babyjub";
 import { Scalar } from "./scalar";
 
 // formats private key for the curve
