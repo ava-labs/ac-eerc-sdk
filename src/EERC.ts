@@ -10,7 +10,6 @@ import { Scalar } from "./crypto/scalar";
 import type { Point } from "./crypto/types";
 import { ProofGenerator } from "./helpers";
 import { ProofType } from "./helpers/types";
-import type { EncryptedBalance } from "./hooks/types";
 import {
   ERC34_ABI,
   LOOKUP_TABLE_URL,

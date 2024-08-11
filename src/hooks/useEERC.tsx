@@ -157,7 +157,7 @@ export function useEERC(
         args: [address],
       });
 
-      return false;
+      return result;
     } catch (error) {
       throw new Error(error as string);
     }

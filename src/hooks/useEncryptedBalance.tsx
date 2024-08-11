@@ -4,6 +4,7 @@ import { type WalletClient, useContractRead } from "wagmi";
 import type { EERC } from "../EERC";
 import { Scalar } from "../crypto/scalar";
 import type { Point } from "../crypto/types";
+import { ERC34_ABI } from "../utils";
 import type { EncryptedBalance } from "./types";
 
 export function useEncryptedBalance(
@@ -20,10 +21,14 @@ export function useEncryptedBalance(
     bigint[]
   >([]);
 
+  const eercContract = {
+    address: contractAddress as `0x${string}`,
+    abi: ERC34_ABI,
+  };
+
   // get encrypted balance of the user
   const { data: contractBalance } = useContractRead({
-    address: contractAddress as `0x${string}`,
-    abi: eerc?.abi,
+    ...eercContract,
     functionName: tokenAddress ? "balanceOfFromAddress" : "balanceOf",
     args: [wallet?.account.address, tokenAddress || 0n],
     enabled: !!wallet?.account.address,
@@ -32,8 +37,7 @@ export function useEncryptedBalance(
 
   // auditor public key
   useContractRead({
-    abi: eerc?.abi,
-    address: contractAddress as `0x${string}`,
+    ...eercContract,
     functionName: "getAuditorPublicKey",
     args: [],
     onSuccess: (publicKey) => setAuditorPublicKey(publicKey as bigint[]),
