@@ -4,14 +4,19 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
+    "declaration": true,
+    "declarationMap": true,
     "jsx": "react-jsx",
+    "outDir": "./dist",
+
     "allowJs": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "emitDeclarationOnly": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true,
+    "noEmit": false,
 
     /* Linting */
     "skipLibCheck": true,

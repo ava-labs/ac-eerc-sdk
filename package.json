@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "module": "src/index.ts",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^18.3.3",
