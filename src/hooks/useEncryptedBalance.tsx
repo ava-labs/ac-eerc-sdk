@@ -20,6 +20,7 @@ export function useEncryptedBalance(
     bigint[]
   >([]);
 
+  // get encrypted balance of the user
   const { data: contractBalance } = useContractRead({
     address: contractAddress as `0x${string}`,
     abi: eerc?.abi,
@@ -60,6 +61,7 @@ export function useEncryptedBalance(
     setEncryptedBalance(parsedBalance);
   }, [contractBalance, encryptedBalance]);
 
+  // if encrypted balance is changed or not decrypted yet
   useAsync(async () => {
     if (!encryptedBalance.length || !eerc) return;
 
@@ -165,7 +167,7 @@ export function useEncryptedBalance(
     decryptedBalance,
     parsedDecryptedBalance,
     encryptedBalance,
-    isDecrypting,
+    isDecrypting: isDecrypting || !decryptedBalance.length,
     auditorPublicKey,
 
     // functions

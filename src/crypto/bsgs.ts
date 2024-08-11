@@ -15,6 +15,7 @@ export class BSGS {
     private storage = new IndexedDBStorage(),
   ) {}
 
+  // initialize BSGS
   async initialize(): Promise<void> {
     try {
       // get table from indexed db

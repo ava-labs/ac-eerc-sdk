@@ -77,7 +77,6 @@ export class EERC {
   // function to register a new user to the contract
   async register(): Promise<{
     key: string;
-    error: string;
     transactionHash: string;
   }> {
     if (!this.wallet || !this.client || !this.contractAddress)
@@ -90,6 +89,7 @@ export class EERC {
         this.contractAddress,
       );
 
+      // deriving the decryption key from the user signature
       const signature = await this.wallet.signMessage({ message });
       const key = getPrivateKeyFromSignature(signature);
       const formatted = formatKeyForCurve(key);
@@ -119,12 +119,13 @@ export class EERC {
       };
 
       const isRegistered = await check();
+
+      // if user already registered return the key
       if (isRegistered) {
         this.decryptionKey = key;
         this.publicKey = publicKey;
         return {
           key,
-          error: "User already registered!",
           transactionHash: "",
         };
       }
@@ -140,7 +141,7 @@ export class EERC {
       this.publicKey = publicKey;
 
       // returns proof for the transaction
-      return { key, error: "", transactionHash };
+      return { key, transactionHash };
     } catch (e) {
       throw new Error(e as string);
     }
@@ -618,17 +619,7 @@ export class EERC {
     return data;
   }
 
-  async fetchUserBalance(userAddress: string, tokenAddress: string) {
-    const data = await this.client.readContract({
-      abi: this.abi,
-      address: this.contractAddress as `0x${string}`,
-      functionName: "balanceOfFromAddress",
-      args: [userAddress as `0x${string}`, tokenAddress as `0x${string}`],
-    });
-
-    return data as EncryptedBalance;
-  }
-
+  // returns the token id from token address
   async tokenId(tokenAddress: string) {
     const data = await this.client.readContract({
       abi: this.abi,
@@ -685,6 +676,7 @@ export class EERC {
       const currentBlock = await this.client.getBlockNumber();
       const events = ERC34_ABI.filter((element) => element.type === "event");
 
+      // get last 50 blocks logs
       const logs = (await this.client.getLogs({
         address: this.contractAddress,
         fromBlock: currentBlock - 50n,
