@@ -41,7 +41,7 @@ export function useEERC(
     onSuccess: (_isConverter: boolean) => setIsConverter(_isConverter),
   });
 
-  // auditor public key
+  // get auditor public key
   useContractRead({
     ...eercContract,
     functionName: "getAuditorPublicKey",
@@ -64,7 +64,7 @@ export function useEERC(
     },
   });
 
-  // fetches the name and symbol of the encrypted tokens
+  // fetches the name and symbol of the EERC
   useContractReads({
     contracts: [
       {
@@ -100,6 +100,7 @@ export function useEERC(
     }
   };
 
+  // sets auditor public key as user's public key
   const setMyselfAsAuditor = async () => {
     try {
       if (!eerc || !eerc.publicKey) return;
@@ -138,11 +139,13 @@ export function useEERC(
     };
   }, [client, wallet, contractAddress, decryptionKey, isConverter]);
 
+  // registers the user to the EERC contract
   const register = useCallback(() => {
     if (!eerc) return;
     return eerc.register();
   }, [eerc]);
 
+  // decrypt the encrypted data by the auditor public key
   const auditorDecrypt = useCallback(() => {
     if (!eerc) return;
     return eerc.auditorDecrypt();
@@ -168,24 +171,24 @@ export function useEERC(
     useEncryptedBalance(eerc, contractAddress, wallet, tokenAddress);
 
   return {
-    isInitialized,
-    isRegistered,
-    isConverter,
-    publicKey: eerc?.publicKey,
-    auditorPublicKey,
+    isInitialized, // is sdk initialized
+    isRegistered, // is user registered to the contract
+    isConverter, // is contract converter
+    publicKey: eerc?.publicKey, // user's public key
+    auditorPublicKey, // auditor's public key
     isAuditorKeySet:
       auditorPublicKey.length &&
       auditorPublicKey[0] !== 0n &&
-      auditorPublicKey[1] !== 0n,
-    name,
-    symbol,
+      auditorPublicKey[1] !== 0n, // is auditor's public key set if not need to set before interacting with the contract
+    name, // EERC name, (only for stand-alone version)
+    symbol, // EERC symbol, (only for stand-alone version)
 
     // functions
-    register,
-    setAuditor,
-    setMyselfAsAuditor,
-    auditorDecrypt,
-    isAddressRegistered,
+    register, // register user to the contract
+    setAuditor, // set auditor public key
+    setMyselfAsAuditor, // set user's public key as auditor's public key
+    auditorDecrypt, // auditor decryption
+    isAddressRegistered, // function for checking address is registered or not
 
     // hooks
     useEncryptedBalance: useEncryptedBalanceHook,

@@ -60,7 +60,7 @@ export class BSGS {
 
     if (value !== undefined) return BigInt(value);
 
-    // for the practical implementation we will do max 2000 iterations
+    // for the practical implementation we will do max 20_000 iterations
     // which covers (500_000 * 20_000) = 10_000_000_000
     // which is 10_000_000_000 dollars in the user's wallet
     // takes around 130ms to find 250_000_000

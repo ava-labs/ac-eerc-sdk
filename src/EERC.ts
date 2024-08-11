@@ -21,11 +21,11 @@ export class EERC {
   private client: PublicClient;
   private wallet: WalletClient;
 
+  // crypto
   public curve: BabyJub;
   public field: FF;
   public poseidon: Poseidon;
   public bsgs: BSGS;
-
   public proofGenerator: ProofGenerator;
 
   // contract field
@@ -33,16 +33,16 @@ export class EERC {
   public isConverter: boolean;
   public abi = ERC34_ABI;
 
+  // user field
+  private decryptionKey: string;
+  public publicKey: bigint[] = [];
+
   // burn user is used for private burn transactions
   // instead of burning tokens, they are transferred to the burn user
   public BURN_USER = {
     address: "0x1111111111111111111111111111111111111111",
     publicKey: [0n, 1n],
   };
-
-  // user field
-  private decryptionKey: string;
-  public publicKey: bigint[] = [];
 
   constructor(
     client: PublicClient,
