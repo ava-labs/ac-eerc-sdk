@@ -103,14 +103,6 @@ export function useEERC(
   const setMyselfAsAuditor = async () => {
     try {
       if (!eerc || !eerc.publicKey) return;
-      // const transactionHash = await wallet?.writeContract({
-      //   ...eercContract,
-      //   functionName: "setAuditorPublicKey",
-      //   args: [eerc.publicKey],
-      // });
-
-      // return transactionHash;
-
       return setAuditor(eerc.publicKey as Point);
     } catch (error) {
       throw new Error(error as string);
