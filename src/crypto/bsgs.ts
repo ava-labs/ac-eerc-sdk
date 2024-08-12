@@ -1,5 +1,5 @@
 import xxhash from "xxhash-wasm";
-import { IndexedDBStorage } from "../helpers/storage";
+import { IndexedDBStorage } from "../helpers";
 import type { BabyJub } from "./babyjub";
 import type { Point } from "./types";
 
@@ -62,7 +62,8 @@ export class BSGS {
 
     // for the practical implementation we will do max 20_000 iterations
     // which covers (500_000 * 20_000) = 10_000_000_000
-    // which is 10_000_000_000 dollars in the user's wallet
+    // which is equivalent to 10.000.000.000 tokens as the
+    // upper limit for the integer part of the balance.
     // takes around 130ms to find 250_000_000
     //              311ms to find 500_000_000
     //              376ms to find 750_000_000

@@ -8,8 +8,7 @@ import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
 import { Poseidon } from "./crypto/poseidon";
 import { Scalar } from "./crypto/scalar";
 import type { Point } from "./crypto/types";
-import { ProofGenerator } from "./helpers";
-import { ProofType } from "./helpers/types";
+import { ProofGenerator, ProofType, logMessage } from "./helpers";
 import {
   ERC34_ABI,
   LOOKUP_TABLE_URL,
@@ -71,6 +70,7 @@ export class EERC {
 
   async init() {
     await this.bsgs.initialize();
+    logMessage("EERC initialized successfully!");
   }
 
   // function to register a new user to the contract
@@ -82,6 +82,7 @@ export class EERC {
       throw new Error("Missing client, wallet or contract address!");
 
     try {
+      logMessage("Registering user to the contract");
       // message to sign
       const message = MESSAGES.REGISTER(
         this.wallet.account.address,
@@ -129,6 +130,7 @@ export class EERC {
         };
       }
 
+      logMessage("Sending transaction");
       const transactionHash = await this.wallet.writeContract({
         abi: this.abi,
         address: this.contractAddress,
@@ -167,6 +169,7 @@ export class EERC {
         "Missing client, wallet, contract address or decryption key!",
       );
 
+    logMessage("Minting encrypted tokens");
     const privateKey = formatKeyForCurve(this.decryptionKey);
 
     // encrypt the total mint amount
@@ -199,6 +202,7 @@ export class EERC {
       auditorEncKeyRandom: encryptionRandom.toString(),
     };
 
+    // generate proof for the transaction
     const proof = await this.proofGenerator.generateProof(
       ProofType.MINT,
       input,
@@ -242,6 +246,7 @@ export class EERC {
         "Missing client, wallet, contract address or decryption key!",
       );
 
+    logMessage("Burning encrypted tokens");
     const proof = await this.generateTransferProof(
       this.BURN_USER.address,
       totalAmount,
@@ -250,6 +255,7 @@ export class EERC {
       auditorPublicKey,
     );
 
+    logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
       abi: this.abi,
       address: this.contractAddress,
@@ -278,6 +284,7 @@ export class EERC {
         "Missing client, wallet, contract address or decryption key!",
       );
 
+    logMessage("Transferring encrypted tokens");
     const proof = await this.generateTransferProof(
       to,
       totalAmount,
@@ -286,6 +293,7 @@ export class EERC {
       auditorPublicKey,
     );
 
+    logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
       abi: this.abi,
       address: this.contractAddress,
@@ -348,6 +356,7 @@ export class EERC {
         "Missing client, wallet, contract address or decryption key!",
       );
 
+    logMessage("Depositing tokens to the contract");
     // check if the user has enough approve amount
     const approveAmount = await this.fetchUserApprove(
       this.wallet.account.address,
@@ -358,6 +367,7 @@ export class EERC {
       throw new Error("Insufficient approval amount!");
     }
 
+    logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
       abi: this.abi,
       address: this.contractAddress as `0x${string}`,
@@ -385,21 +395,26 @@ export class EERC {
         "Missing client, wallet, contract address or decryption key!",
       );
 
+    if (amount <= 0n) throw new Error("Invalid amount!");
+    if (!encryptedBalance.length || decryptedBalance.length !== 2)
+      throw new Error("Invalid balance!");
+
     try {
+      logMessage("Withdrawing tokens from the contract");
       const tokenId = await this.tokenId(tokenAddress);
 
       const privateKey = formatKeyForCurve(this.decryptionKey);
       const [withdrawWhole, withdrawFractional] = Scalar.recalculate(amount);
       const senderTotalBalance = Scalar.calculate(
-        decryptedBalance[0],
-        decryptedBalance[1],
+        decryptedBalance[0] as bigint,
+        decryptedBalance[1] as bigint,
       );
 
       if (amount > senderTotalBalance) throw new Error("Insufficient balance!");
 
       const [toBeSubtracted, toBeAdded] = Scalar.decide(
-        decryptedBalance[0],
-        decryptedBalance[1],
+        decryptedBalance?.[0] as bigint,
+        decryptedBalance?.[1] as bigint,
         withdrawWhole,
         withdrawFractional,
       );
@@ -417,17 +432,17 @@ export class EERC {
       );
 
       const input = {
-        obd: decryptedBalance[0].toString(),
-        obf: decryptedBalance[1].toString(),
+        obd: decryptedBalance[0]?.toString(),
+        obf: decryptedBalance[1]?.toString(),
         old_balance_tot: senderTotalBalance.toString(),
         new_balance_dec: newWhole.toString(),
         new_balance_float: newFractional.toString(),
         ad: withdrawWhole.toString(),
         af: withdrawFractional.toString(),
-        a1_dec: toBeSubtracted[0].toString(),
-        a1_float: toBeSubtracted[1].toString(),
-        a2_dec: toBeAdded[0].toString(),
-        a2_float: toBeAdded[1].toString(),
+        a1_dec: (toBeSubtracted[0] as bigint).toString(),
+        a1_float: (toBeSubtracted[1] as bigint).toString(),
+        a2_dec: (toBeAdded[0] as bigint).toString(),
+        a2_float: (toBeAdded[1] as bigint).toString(),
         sender_sk: privateKey.toString(),
         sender_pk: this.publicKey.map(String),
         obd_c1: [encryptedBalance[0], encryptedBalance[1]].map(String),
@@ -436,15 +451,15 @@ export class EERC {
         obf_c1: [encryptedBalance[4], encryptedBalance[5]].map(String),
         obf_c2: [encryptedBalance[6], encryptedBalance[7]].map(String),
 
-        a1_dec_c1: toBeSubtractedEncrypted.cipher[0].c1.map(String),
-        a1_dec_c2: toBeSubtractedEncrypted.cipher[0].c2.map(String),
-        a1_float_c1: toBeSubtractedEncrypted.cipher[1].c1.map(String),
-        a1_float_c2: toBeSubtractedEncrypted.cipher[1].c2.map(String),
+        a1_dec_c1: toBeSubtractedEncrypted.cipher[0]?.c1.map(String),
+        a1_dec_c2: toBeSubtractedEncrypted.cipher[0]?.c2.map(String),
+        a1_float_c1: toBeSubtractedEncrypted.cipher[1]?.c1.map(String),
+        a1_float_c2: toBeSubtractedEncrypted.cipher[1]?.c2.map(String),
 
-        a2_dec_c1: toBeAddedEncrypted.cipher[0].c1.map(String),
-        a2_dec_c2: toBeAddedEncrypted.cipher[0].c2.map(String),
-        a2_float_c1: toBeAddedEncrypted.cipher[1].c1.map(String),
-        a2_float_c2: toBeAddedEncrypted.cipher[1].c2.map(String),
+        a2_dec_c1: toBeAddedEncrypted.cipher[0]?.c1.map(String),
+        a2_dec_c2: toBeAddedEncrypted.cipher[0]?.c2.map(String),
+        a2_float_c1: toBeAddedEncrypted.cipher[1]?.c1.map(String),
+        a2_float_c2: toBeAddedEncrypted.cipher[1]?.c2.map(String),
       };
 
       const proof = await this.proofGenerator.generateProof(
@@ -452,6 +467,7 @@ export class EERC {
         input,
       );
 
+      logMessage("Sending transaction");
       const transactionHash = await this.wallet.writeContract({
         abi: this.abi,
         address: this.contractAddress,
@@ -490,14 +506,14 @@ export class EERC {
       const [transferWhole, transferFractional] = Scalar.recalculate(amount);
 
       const senderTotalBalance = Scalar.calculate(
-        decryptedBalance[0],
-        decryptedBalance[1],
+        decryptedBalance?.[0] as bigint,
+        decryptedBalance?.[1] as bigint,
       );
 
       if (amount > senderTotalBalance) throw new Error("Insufficient balance!");
       const [toBeSubtracted, toBeAdded] = Scalar.decide(
-        decryptedBalance[0],
-        decryptedBalance[1],
+        decryptedBalance?.[0] as bigint,
+        decryptedBalance?.[1] as bigint,
         transferWhole,
         transferFractional,
       );
@@ -525,17 +541,17 @@ export class EERC {
         });
 
       const input = {
-        obd: decryptedBalance[0].toString(),
-        obf: decryptedBalance[1].toString(),
+        obd: decryptedBalance[0]?.toString(),
+        obf: decryptedBalance[1]?.toString(),
         old_balance_tot: senderTotalBalance.toString(),
         new_balance_dec: newWhole.toString(),
         new_balance_float: newFractional.toString(),
         ad: transferWhole.toString(),
         af: transferFractional.toString(),
-        a1_dec: toBeSubtracted[0].toString(),
-        a1_float: toBeSubtracted[1].toString(),
-        a2_dec: toBeAdded[0].toString(),
-        a2_float: toBeAdded[1].toString(),
+        a1_dec: toBeSubtracted[0]?.toString(),
+        a1_float: toBeSubtracted[1]?.toString(),
+        a2_dec: toBeAdded[0]?.toString(),
+        a2_float: toBeAdded[1]?.toString(),
         sender_sk: privateKey.toString(),
         sender_pk: this.publicKey.map(String),
         obd_c1: [encryptedBalance[0], encryptedBalance[1]].map(String),
@@ -543,15 +559,15 @@ export class EERC {
         obf_c1: [encryptedBalance[4], encryptedBalance[5]].map(String),
         obf_c2: [encryptedBalance[6], encryptedBalance[7]].map(String),
 
-        a1_dec_c1: toBeSubtractedEncrypted.cipher[0].c1.map(String),
-        a1_dec_c2: toBeSubtractedEncrypted.cipher[0].c2.map(String),
-        a1_float_c1: toBeSubtractedEncrypted.cipher[1].c1.map(String),
-        a1_float_c2: toBeSubtractedEncrypted.cipher[1].c2.map(String),
+        a1_dec_c1: toBeSubtractedEncrypted.cipher[0]?.c1.map(String),
+        a1_dec_c2: toBeSubtractedEncrypted.cipher[0]?.c2.map(String),
+        a1_float_c1: toBeSubtractedEncrypted.cipher[1]?.c1.map(String),
+        a1_float_c2: toBeSubtractedEncrypted.cipher[1]?.c2.map(String),
 
-        a2_dec_c1: toBeAddedEncrypted.cipher[0].c1.map(String),
-        a2_dec_c2: toBeAddedEncrypted.cipher[0].c2.map(String),
-        a2_float_c1: toBeAddedEncrypted.cipher[1].c1.map(String),
-        a2_float_c2: toBeAddedEncrypted.cipher[1].c2.map(String),
+        a2_dec_c1: toBeAddedEncrypted.cipher[0]?.c1.map(String),
+        a2_dec_c2: toBeAddedEncrypted.cipher[0]?.c2.map(String),
+        a2_float_c1: toBeAddedEncrypted.cipher[1]?.c1.map(String),
+        a2_float_c2: toBeAddedEncrypted.cipher[1]?.c2.map(String),
 
         receiver_pk: receiverPublicKey.map(String),
         recv_elgamal_random: [
@@ -637,16 +653,18 @@ export class EERC {
       return [0n, 0n];
     }
 
+    if (cipher.length !== 8) throw new Error("Invalid cipher length!");
+
     const privateKey = formatKeyForCurve(this.decryptionKey);
 
     // decrypts the balance using the decryption key
     const wholePoint = this.curve.elGamalDecryption(privateKey, {
-      c1: [cipher[0], cipher[1]],
-      c2: [cipher[2], cipher[3]],
+      c1: [cipher[0], cipher[1]] as Point,
+      c2: [cipher[2], cipher[3]] as Point,
     });
     const fractionalPoint = this.curve.elGamalDecryption(privateKey, {
-      c1: [cipher[4], cipher[5]],
-      c2: [cipher[6], cipher[7]],
+      c1: [cipher[4], cipher[5]] as Point,
+      c2: [cipher[6], cipher[7]] as Point,
     });
 
     // doing bsgs
@@ -702,7 +720,7 @@ export class EERC {
           length,
         });
 
-        const amount = Scalar.calculate(whole, fractional);
+        const amount = Scalar.calculate(whole as bigint, fractional as bigint);
         result.push({ hash: log.transactionHash, amount });
       }
 

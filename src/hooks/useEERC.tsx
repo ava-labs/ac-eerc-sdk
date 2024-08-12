@@ -7,6 +7,7 @@ import {
 } from "wagmi";
 import { EERC } from "../EERC";
 import type { Point } from "../crypto/types";
+import { logMessage } from "../helpers";
 import { ERC34_ABI } from "../utils";
 import { useEncryptedBalance } from "./useEncryptedBalance";
 
@@ -80,14 +81,16 @@ export function useEERC(
     ],
     enabled: !isConverter && !!contractAddress,
     onSuccess: (results: { result: string; status: string }[]) => {
-      setName(results[0].result);
-      setSymbol(results[1].result);
+      if (!results || !results.length) return;
+      setName(results[0]?.result);
+      setSymbol(results[1]?.result);
     },
   });
 
   // sets auditor public key
   const setAuditor = async (publicKey: Point) => {
     try {
+      logMessage(`Setting auditor public key: ${publicKey}`);
       const transactionHash = await wallet?.writeContract({
         ...eercContract,
         functionName: "setAuditorPublicKey",
@@ -125,9 +128,10 @@ export function useEERC(
         .then(() => {
           setEERC(_eerc);
           setIsInitialized(true);
+          logMessage("EERC initialized");
         })
         .catch((error) => {
-          console.error("Failed to initialize EERC:", error);
+          logMessage(`Failed to initialize EERC: ${error}`);
           setEERC(undefined);
           setIsInitialized(false);
         });
