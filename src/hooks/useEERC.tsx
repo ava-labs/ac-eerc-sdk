@@ -37,7 +37,6 @@ export function useEERC(
   useContractRead({
     ...eercContract,
     functionName: "isConverter",
-    enabled: !!contractAddress,
     args: [],
     onSuccess: (_isConverter: boolean) => setIsConverter(_isConverter),
   });
@@ -144,6 +143,7 @@ export function useEERC(
 
   // registers the user to the EERC contract
   const register = useCallback(() => {
+    // need to reject like this so that the error can be caught in the component
     if (!eerc) return Promise.reject("EERC not initialized");
     return eerc.register();
   }, [eerc]);
