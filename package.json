@@ -33,8 +33,8 @@
     "react-use": "^17.5.0",
     "snarkjs": "^0.7.4",
     "tiny-msgpack": "^2.2.0",
+    "xxhash-wasm": "^1.0.2",
     "viem": "^1.21.4",
-    "wagmi": "^1.4.13",
-    "xxhash-wasm": "^1.0.2"
+    "wagmi": "^1.4.13"
   }
 }

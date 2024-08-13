@@ -1,5 +1,5 @@
 import { isAddress } from "ethers";
-import type { Log } from "viem";
+import { type Log, decodeFunctionData } from "viem";
 import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { BSGS } from "./crypto/bsgs";
@@ -9,6 +9,7 @@ import { Poseidon } from "./crypto/poseidon";
 import { Scalar } from "./crypto/scalar";
 import type { Point } from "./crypto/types";
 import { ProofGenerator, ProofType, logMessage } from "./helpers";
+import { type DecryptedTransaction, TransactionType } from "./hooks/types";
 import {
   ERC34_ABI,
   LOOKUP_TABLE_URL,
@@ -678,7 +679,7 @@ export class EERC {
 
   // decrypts the PCT of the transactions
   // only the auditor can decrypt the pct and get the details of the transaction
-  async auditorDecrypt() {
+  async auditorDecrypt(): Promise<DecryptedTransaction[]> {
     if (!this.decryptionKey) throw new Error("Missing decryption key!");
     const privateKey = formatKeyForCurve(this.decryptionKey);
 
@@ -687,7 +688,7 @@ export class EERC {
       args: { auditorPCT: bigint[] };
     };
 
-    const result = [];
+    const result: DecryptedTransaction[] = [];
 
     try {
       const currentBlock = await this.client.getBlockNumber();
@@ -696,14 +697,17 @@ export class EERC {
       // get last 50 blocks logs
       const logs = (await this.client.getLogs({
         address: this.contractAddress,
-        fromBlock: currentBlock - 50n,
+        fromBlock: currentBlock - 10n,
         toBlock: currentBlock,
         events,
       })) as NamedEvents[];
 
       for (const log of logs) {
-        const name = log?.eventName;
-        if (!name) continue;
+        if (!log.transactionHash) return [];
+        const tx = await this.client.getTransaction({
+          hash: log.transactionHash,
+        });
+
         const pct = log?.args?.auditorPCT as bigint[];
         if (!pct || pct?.length !== 7) continue;
 
@@ -720,8 +724,22 @@ export class EERC {
           length,
         });
 
+        const decoded = decodeFunctionData({
+          abi: ERC34_ABI,
+          data: tx.input as `0x${string}`,
+        });
+
         const amount = Scalar.calculate(whole as bigint, fractional as bigint);
-        result.push({ hash: log.transactionHash, amount });
+        result.push({
+          transactionHash: log.transactionHash,
+          amount,
+          sender: tx.from,
+          type: decoded?.functionName as TransactionType,
+          receiver:
+            decoded?.functionName === TransactionType.TRANSFER
+              ? (decoded?.args?.[0] as `0x${string}`) ?? null
+              : null,
+        });
       }
 
       return result;

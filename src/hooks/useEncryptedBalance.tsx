@@ -123,7 +123,7 @@ export function useEncryptedBalance(
         !encryptedBalance.length ||
         !decryptedBalance.length
       )
-        return;
+        return Promise.reject("EERC not initialized");
 
       if (tokenAddress) {
         return eerc.transferToken(

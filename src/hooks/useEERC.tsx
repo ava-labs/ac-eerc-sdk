@@ -22,8 +22,8 @@ export function useEERC(
   const [isConverter, setIsConverter] = useState<boolean>();
   const [auditorPublicKey, setAuditorPublicKey] = useState<bigint[]>([]);
 
-  const [name, setName] = useState<string>();
-  const [symbol, setSymbol] = useState<string>();
+  const [name, setName] = useState<string>("");
+  const [symbol, setSymbol] = useState<string>("");
 
   // isRegistered to the contract
   const [isRegistered, setIsRegistered] = useState(false);
@@ -82,14 +82,15 @@ export function useEERC(
     enabled: !isConverter && !!contractAddress,
     onSuccess: (results: { result: string; status: string }[]) => {
       if (!results || !results.length) return;
-      setName(results[0]?.result);
-      setSymbol(results[1]?.result);
+      setName(results[0]?.result as string);
+      setSymbol(results[1]?.result as string);
     },
   });
 
   // sets auditor public key
-  const setAuditor = async (publicKey: Point) => {
+  const setAuditor = async (publicKey: Point): Promise<`0x${string}`> => {
     try {
+      if (!eerc) return Promise.reject("EERC not initialized");
       logMessage(`Setting auditor public key: ${publicKey}`);
       const transactionHash = await wallet?.writeContract({
         ...eercContract,
@@ -106,8 +107,7 @@ export function useEERC(
   // sets auditor public key as user's public key
   const setMyselfAsAuditor = async () => {
     try {
-      if (!eerc || !eerc.publicKey) return;
-      return setAuditor(eerc.publicKey as Point);
+      return setAuditor(eerc?.publicKey as Point);
     } catch (error) {
       throw new Error(error as string);
     }
@@ -128,7 +128,6 @@ export function useEERC(
         .then(() => {
           setEERC(_eerc);
           setIsInitialized(true);
-          logMessage("EERC initialized");
         })
         .catch((error) => {
           logMessage(`Failed to initialize EERC: ${error}`);
@@ -145,26 +144,29 @@ export function useEERC(
 
   // registers the user to the EERC contract
   const register = useCallback(() => {
-    if (!eerc) return;
+    if (!eerc) return Promise.reject("EERC not initialized");
     return eerc.register();
   }, [eerc]);
 
   // decrypt the encrypted data by the auditor public key
   const auditorDecrypt = useCallback(() => {
-    if (!eerc) return;
+    if (!eerc) return Promise.reject("EERC not initialized");
     return eerc.auditorDecrypt();
   }, [eerc]);
 
   // check is the address is registered to the contract
-  const isAddressRegistered = async (address: `0x${string}`) => {
+  const isAddressRegistered = async (
+    address: `0x${string}`,
+  ): Promise<boolean> => {
     try {
-      const result = await client.readContract({
+      const publicKey = await client.readContract({
         ...eercContract,
         functionName: "getUser",
         args: [address],
       });
 
-      return result;
+      if (!publicKey) return false;
+      return true;
     } catch (error) {
       throw new Error(error as string);
     }
@@ -180,10 +182,11 @@ export function useEERC(
     isConverter, // is contract converter
     publicKey: eerc?.publicKey, // user's public key
     auditorPublicKey, // auditor's public key
-    isAuditorKeySet:
+    isAuditorKeySet: Boolean(
       auditorPublicKey.length &&
-      auditorPublicKey[0] !== 0n &&
-      auditorPublicKey[1] !== 0n, // is auditor's public key set if not need to set before interacting with the contract
+        auditorPublicKey[0] !== 0n &&
+        auditorPublicKey[1] !== 0n,
+    ), // is auditor's public key set if not need to set before interacting with the contract
     name, // EERC name, (only for stand-alone version)
     symbol, // EERC symbol, (only for stand-alone version)
 
