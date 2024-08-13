@@ -1,3 +1,6 @@
+import type { Point } from "../crypto/types";
+import type { useEncryptedBalance } from "./useEncryptedBalance";
+
 export type EncryptedBalance = [ContractCipher, ContractCipher];
 
 export type ContractCipher = {
@@ -23,4 +26,26 @@ export type DecryptedTransaction = {
   sender: `0x${string}`;
   receiver: `0x${string}` | null;
   transactionHash: `0x${string}`;
+};
+
+export type EERCHookResult = {
+  isInitialized: boolean;
+  isAllDataFetched: boolean;
+  isRegistered: boolean;
+  isConverter: boolean;
+  publicKey: bigint[];
+  auditorPublicKey: bigint[];
+  isAuditorKeySet: boolean;
+  name: string;
+  symbol: string;
+  register: () => Promise<{ key: string; transactionHash: string }>;
+  setAuditor: (publicKey: Point) => Promise<`0x${string}`>;
+  setMyselfAsAuditor: () => Promise<`0x${string}`>;
+  auditorDecrypt: () => Promise<DecryptedTransaction[]>;
+  isAddressRegistered: (
+    address: `0x${string}`,
+  ) => Promise<{ isRegistered: boolean; error: string | null }>;
+  useEncryptedBalance: (
+    tokenAddress?: `0x${string}`,
+  ) => ReturnType<typeof useEncryptedBalance>;
 };
