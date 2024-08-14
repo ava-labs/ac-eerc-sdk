@@ -39,6 +39,7 @@ const MyComponent = ({
 }) => {
   const {
       isInitialized,
+      isAllDataFetched,
       isRegistered,
       name,
       symbol,
@@ -59,7 +60,22 @@ const MyComponent = ({
   - `walletClient`: Wagmi wallet client for sending transactions
   - `contractAddress`: The address of the EERC contract.
   - `decryptionKey` (optional): The decryption key for decrypting the encrypted balance. If not provided, after user try to registers, this key will be generated and set automatically.
+- Returns
+  - `isInitialized`: A boolean value that indicates whether the EERC class is initialized.
+  - `isAllDataFetched`: A boolean value that indicates whether all data is fetched.
+  - `isRegistered`: A boolean value that indicates whether the user is registered.
+  - `isConverter`: A boolean value that indicates the type of the EERC.
+  - `publicKey` : The public key of the user.
+  - `auditorPublicKey` : The public key of the auditor.
+  - `isAuditorKeySet` : A boolean value that indicates whether the auditor key is set or not.
+  - `name` : The name of the token.,
+  - `symbol` : The symbol of the token.
 
+  - `register`: A function that registers the user with the EERC contract. 
+  - `setAuditor`: A function that sets the auditor for the EERC contract.
+  - `setMyselfAsAuditor`: A function that sets the user as the auditor for the EERC contract.
+  - `auditorDecrypt`: A function that decrypts the encrypted transactions for the auditor.
+  
 ### useEncryptedBalance
 
 `useEncryptedBalance`: The `useEncryptedBalance` is designed to manage encrypted balances within the EERC protocol on the blockchain. It provides an interface for interacting with encrypted tokens, handling tasks such as decryption, minting, burning, transferring, depositing, and withdrawing tokens. This hook ensures that encrypted balances are managed securely and efficiently, leveraging the cryptographic functions provided by the EERC contract. [Source code](https://github.com/ava-labs/ac-eerc-sdk/blob/main/src/hooks/useEncryptedBalance.tsx)

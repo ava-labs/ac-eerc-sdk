@@ -9,7 +9,11 @@ import { Poseidon } from "./crypto/poseidon";
 import { Scalar } from "./crypto/scalar";
 import type { Point } from "./crypto/types";
 import { ProofGenerator, ProofType, logMessage } from "./helpers";
-import { type DecryptedTransaction, TransactionType } from "./hooks/types";
+import {
+  type DecryptedTransaction,
+  type OperationResult,
+  TransactionType,
+} from "./hooks/types";
 import {
   ERC34_ABI,
   LOOKUP_TABLE_URL,
@@ -158,7 +162,7 @@ export class EERC {
   async privateMint(
     totalMintAmount: bigint,
     auditorPublicKey: Point,
-  ): Promise<{ transactionHash: string }> {
+  ): Promise<OperationResult> {
     if (this.isConverter) throw new Error("Not allowed for converter!");
     if (
       !this.wallet ||
@@ -274,7 +278,7 @@ export class EERC {
     decryptedBalance: bigint[],
     auditorPublicKey: bigint[],
     tokenId = 0n,
-  ) {
+  ): Promise<OperationResult> {
     if (
       !this.wallet ||
       !this.client ||
@@ -316,7 +320,7 @@ export class EERC {
     tokenAddress: string,
     encryptedBalance: bigint[],
     decryptedBalance: bigint[],
-  ) {
+  ): Promise<OperationResult> {
     if (
       !this.wallet ||
       !this.client ||
@@ -330,7 +334,7 @@ export class EERC {
     try {
       const tokenId = await this.tokenId(tokenAddress as string);
 
-      const transactionHash = await this.transfer(
+      const result = await this.transfer(
         to,
         totalAmount,
         encryptedBalance,
@@ -339,7 +343,7 @@ export class EERC {
         tokenId,
       );
 
-      return { transactionHash };
+      return result;
     } catch (e) {
       throw new Error(e as string);
     }
@@ -385,7 +389,7 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint[],
     tokenAddress: string,
-  ): Promise<{ transactionHash: string }> {
+  ): Promise<OperationResult> {
     if (
       !this.wallet ||
       !this.client ||

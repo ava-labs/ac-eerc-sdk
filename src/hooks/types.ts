@@ -20,6 +20,10 @@ export enum TransactionType {
   REGISTER = "register",
 }
 
+export type OperationResult = {
+  transactionHash: `0x${string}`;
+};
+
 export type DecryptedTransaction = {
   type: TransactionType;
   amount: bigint;
@@ -48,4 +52,17 @@ export type EERCHookResult = {
   useEncryptedBalance: (
     tokenAddress?: `0x${string}`,
   ) => ReturnType<typeof useEncryptedBalance>;
+};
+
+export type UseEncryptedBalanceHookResult = {
+  decryptedBalance: bigint[];
+  parsedDecryptedBalance: bigint[];
+  encryptedBalance: bigint[];
+  isDecrypting: boolean;
+  auditorPublicKey: bigint[];
+  privateMint: (amount: bigint) => Promise<OperationResult>;
+  privateBurn: (amount: bigint) => Promise<OperationResult>;
+  privateTransfer: (to: string, amount: bigint) => Promise<OperationResult>;
+  withdraw: (amount: bigint) => Promise<OperationResult>;
+  deposit: (amount: bigint) => Promise<OperationResult>;
 };
