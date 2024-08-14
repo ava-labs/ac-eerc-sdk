@@ -11,11 +11,17 @@ export const formatKeyForCurve = (key: string): bigint => {
     .digest()
     .slice(0, 32);
 
-  const pruneBuffer = (buff: Buffer) => {
-    buff[0] &= 0xf8;
-    buff[31] &= 0x7f;
-    buff[31] |= 0x40;
-    return buff;
+  const pruneBuffer = (buff: Buffer): Buffer => {
+    if (buff.length < 32) {
+      throw new Error("Buffer must be at least 32 bytes long");
+    }
+
+    const newBuff = Buffer.from(buff);
+
+    newBuff[0] = (newBuff[0] ?? 0) & 0xf8;
+    newBuff[31] = ((newBuff[31] ?? 0) & 0x7f) | 0x40;
+
+    return newBuff;
   };
 
   const leBufferToBigInt = (buff: Buffer) =>
