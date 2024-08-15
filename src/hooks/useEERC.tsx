@@ -126,7 +126,7 @@ export function useEERC(
       isUserDataFetched &&
       isNameAndSymbolFetched &&
       eerc &&
-      wallet.account.address
+      wallet?.account?.address
     ) {
       setIsAllDataFetched(true);
     }
@@ -139,7 +139,7 @@ export function useEERC(
     isUserDataFetched,
     isNameAndSymbolFetched,
     eerc,
-    wallet.account.address,
+    wallet?.account?.address,
   ]);
 
   useEffect(() => {
