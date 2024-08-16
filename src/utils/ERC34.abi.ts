@@ -7,11 +7,6 @@ export const ERC34_ABI = [
         type: "bool",
       },
       {
-        internalType: "contract IRegisterVerifier",
-        name: "registerVerifier_",
-        type: "address",
-      },
-      {
         internalType: "contract IMintVerifier",
         name: "mintVerifier_",
         type: "address",
@@ -26,13 +21,28 @@ export const ERC34_ABI = [
         name: "transferVerifier_",
         type: "address",
       },
+      {
+        internalType: "contract IRegistrar",
+        name: "registrar_",
+        type: "address",
+      },
+      {
+        internalType: "string",
+        name: "name_",
+        type: "string",
+      },
+      {
+        internalType: "string",
+        name: "symbol_",
+        type: "string",
+      },
     ],
     stateMutability: "nonpayable",
     type: "constructor",
   },
   {
     inputs: [],
-    name: "DuplicatePublicKey",
+    name: "AuditorKeyNotSet",
     type: "error",
   },
   {
@@ -80,11 +90,6 @@ export const ERC34_ABI = [
       },
     ],
     name: "OwnableUnauthorizedAccount",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "ParametersAlreadySet",
     type: "error",
   },
   {
@@ -237,37 +242,6 @@ export const ERC34_ABI = [
     anonymous: false,
     inputs: [
       {
-        indexed: true,
-        internalType: "address",
-        name: "user",
-        type: "address",
-      },
-      {
-        components: [
-          {
-            internalType: "uint256",
-            name: "x",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
-            name: "y",
-            type: "uint256",
-          },
-        ],
-        indexed: false,
-        internalType: "struct Point",
-        name: "publicKey",
-        type: "tuple",
-      },
-    ],
-    name: "Register",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
         indexed: false,
         internalType: "uint256[7]",
         name: "auditorPCT",
@@ -276,19 +250,6 @@ export const ERC34_ABI = [
     ],
     name: "Transfer",
     type: "event",
-  },
-  {
-    inputs: [],
-    name: "BURN_USER",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
   },
   {
     inputs: [
@@ -613,18 +574,25 @@ export const ERC34_ABI = [
       {
         components: [
           {
-            internalType: "uint256",
-            name: "x",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
-            name: "y",
-            type: "uint256",
+            components: [
+              {
+                internalType: "uint256",
+                name: "x",
+                type: "uint256",
+              },
+              {
+                internalType: "uint256",
+                name: "y",
+                type: "uint256",
+              },
+            ],
+            internalType: "struct Point",
+            name: "publicKey",
+            type: "tuple",
           },
         ],
-        internalType: "struct Point",
-        name: "publicKey",
+        internalType: "struct User",
+        name: "",
         type: "tuple",
       },
     ],
@@ -650,6 +618,19 @@ export const ERC34_ABI = [
         internalType: "uint256",
         name: "",
         type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "isAuditorKeySet",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
       },
     ],
     stateMutability: "view",
@@ -757,19 +738,6 @@ export const ERC34_ABI = [
     type: "function",
   },
   {
-    inputs: [],
-    name: "parametersSet",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [
       {
         components: [
@@ -845,46 +813,11 @@ export const ERC34_ABI = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        components: [
-          {
-            internalType: "uint256[2]",
-            name: "a",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[2][2]",
-            name: "b",
-            type: "uint256[2][2]",
-          },
-          {
-            internalType: "uint256[2]",
-            name: "c",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[2]",
-            name: "inputs",
-            type: "uint256[2]",
-          },
-        ],
-        internalType: "struct RegisterProof",
-        name: "_proof",
-        type: "tuple",
-      },
-    ],
-    name: "register",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     inputs: [],
-    name: "registerVerifier",
+    name: "registrar",
     outputs: [
       {
-        internalType: "contract IRegisterVerifier",
+        internalType: "contract IRegistrar",
         name: "",
         type: "address",
       },
@@ -908,24 +841,6 @@ export const ERC34_ABI = [
       },
     ],
     name: "setAuditorPublicKey",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "string",
-        name: "name_",
-        type: "string",
-      },
-      {
-        internalType: "string",
-        name: "symbol_",
-        type: "string",
-      },
-    ],
-    name: "setTokenParameters",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
