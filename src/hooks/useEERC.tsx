@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Abi } from "viem";
 import {
   type PublicClient,
   type WalletClient,
@@ -21,7 +22,7 @@ export function useEERC(
   const eercContract = useMemo(
     () => ({
       address: contractAddress as `0x${string}`,
-      abi: ERC34_ABI,
+      abi: ERC34_ABI as Abi,
     }),
     [contractAddress],
   );
@@ -142,6 +143,8 @@ export function useEERC(
     wallet?.account?.address,
     isAuditorPublicKeyFetched,
   ]);
+
+  console.log("xDD");
 
   useEffect(() => {
     if (

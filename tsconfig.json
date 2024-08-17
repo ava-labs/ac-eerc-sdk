@@ -4,7 +4,7 @@
   "exclude": ["node_modules", "dist"],
   "compilerOptions": {
     "outDir": "./dist",
-    "incremental": true,
+    "rootDir": "./src",
 
     // Type checking
     "strict": true,
@@ -22,7 +22,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "importHelpers": false,
 
     // Language and environment

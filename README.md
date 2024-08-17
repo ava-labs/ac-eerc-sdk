@@ -16,8 +16,8 @@
 ## Getting Started 🚀
 
 ```sh
-bun install        # installs dependencies
-bun run build      # build
+pnpm install        # installs dependencies
+pnpm build.         # build
 bun test           # run tests
 ```
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAsync } from "react-use";
-import { type WalletClient, useContractRead } from "wagmi";
+import type { WalletClient } from "viem";
+import { useContractRead } from "wagmi";
 import type { EERC } from "../EERC";
 import { Scalar } from "../crypto/scalar";
 import type { Point } from "../crypto/types";
@@ -33,8 +34,8 @@ export function useEncryptedBalance(
   const { data: contractBalance } = useContractRead({
     ...eercContract,
     functionName: tokenAddress ? "balanceOfFromAddress" : "balanceOf",
-    args: [wallet?.account.address, tokenAddress || 0n],
-    enabled: !!wallet?.account.address,
+    args: [wallet?.account?.address, tokenAddress || 0n],
+    enabled: !!wallet?.account?.address,
     watch: true,
   });
 

@@ -1,4 +1,3 @@
-import { describe, expect, test } from "bun:test";
 import { BabyJub } from "../../src/crypto/babyjub";
 import { FF } from "../../src/crypto/ff";
 import type { ElGamalCipherText, Point } from "../../src/crypto/types";
