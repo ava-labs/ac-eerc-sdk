@@ -20,6 +20,7 @@ import {
   MESSAGES,
   SNARK_FIELD_SIZE,
 } from "./utils";
+import { REGISTRAR_ABI } from "./utils/Registrar.abi";
 
 export class EERC {
   private client: PublicClient;
@@ -35,7 +36,10 @@ export class EERC {
   // contract field
   public contractAddress: `0x${string}`;
   public isConverter: boolean;
-  public abi = ERC34_ABI;
+  public erc34Abi = ERC34_ABI;
+
+  public registrarAddress: `0x${string}`;
+  public registrarAbi = REGISTRAR_ABI;
 
   // user field
   private decryptionKey: string;
@@ -52,12 +56,14 @@ export class EERC {
     client: PublicClient,
     wallet: WalletClient,
     contractAddress: `0x${string}`,
+    registrarAddress: `0x${string}`,
     isConverter: boolean,
     decryptionKey?: string,
   ) {
     this.client = client;
     this.wallet = wallet;
     this.contractAddress = contractAddress;
+    this.registrarAddress = registrarAddress;
     this.isConverter = isConverter;
 
     this.field = new FF(SNARK_FIELD_SIZE);
@@ -74,8 +80,12 @@ export class EERC {
   }
 
   async init() {
-    await this.bsgs.initialize();
-    logMessage("EERC initialized successfully!");
+    try {
+      await this.bsgs.initialize();
+      logMessage("EERC initialized successfully!");
+    } catch (e) {
+      throw new Error(e as string);
+    }
   }
 
   // function to register a new user to the contract
@@ -91,7 +101,7 @@ export class EERC {
       // message to sign
       const message = MESSAGES.REGISTER(
         this.wallet.account.address,
-        this.contractAddress,
+        this.client.chain.id,
       );
 
       // deriving the decryption key from the user signature
@@ -112,14 +122,14 @@ export class EERC {
       );
 
       const check = async () => {
-        const data = (await this.client.readContract({
+        const { publicKey } = (await this.client.readContract({
           address: this.contractAddress,
-          abi: this.abi,
+          abi: this.erc34Abi,
           functionName: "getUser",
           args: [this.wallet.account.address],
-        })) as { x: bigint; y: bigint };
+        })) as { publicKey: { x: bigint; y: bigint } };
 
-        if (data.x !== 0n || data.y !== 0n) return true;
+        if (publicKey.x !== 0n && publicKey.y !== 0n) return true;
         return false;
       };
 
@@ -137,8 +147,8 @@ export class EERC {
 
       logMessage("Sending transaction");
       const transactionHash = await this.wallet.writeContract({
-        abi: this.abi,
-        address: this.contractAddress,
+        abi: this.registrarAbi,
+        address: this.registrarAddress,
         functionName: "register",
         args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: proof.input }],
       });
@@ -215,7 +225,7 @@ export class EERC {
 
     // write the transaction to the contract
     const transactionHash = await this.wallet.writeContract({
-      abi: this.abi,
+      abi: this.erc34Abi,
       address: this.contractAddress,
       functionName: "privateMint",
       args: [
@@ -262,7 +272,7 @@ export class EERC {
 
     logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
-      abi: this.abi,
+      abi: this.erc34Abi,
       address: this.contractAddress,
       functionName: "privateBurn",
       args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: proof.input }],
@@ -300,7 +310,7 @@ export class EERC {
 
     logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
-      abi: this.abi,
+      abi: this.erc34Abi,
       address: this.contractAddress,
       functionName: "transfer",
       args: [
@@ -374,7 +384,7 @@ export class EERC {
 
     logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
-      abi: this.abi,
+      abi: this.erc34Abi,
       address: this.contractAddress as `0x${string}`,
       functionName: "deposit",
       args: [amount, tokenAddress],
@@ -474,7 +484,7 @@ export class EERC {
 
       logMessage("Sending transaction");
       const transactionHash = await this.wallet.writeContract({
-        abi: this.abi,
+        abi: this.erc34Abi,
         address: this.contractAddress,
         functionName: "withdraw",
         args: [
@@ -613,18 +623,18 @@ export class EERC {
 
     const data = await this.client.readContract({
       address: this.contractAddress,
-      abi: this.abi,
+      abi: this.erc34Abi,
       functionName: "getUser",
       args: [to],
     });
-    const pk = data as { x: bigint; y: bigint };
+    const { publicKey } = data as { publicKey: { x: bigint; y: bigint } };
 
-    if (!pk) throw new Error("User not registered!");
+    if (!publicKey) throw new Error("User not registered!");
 
-    if (pk.x === this.field.zero || pk.y === this.field.zero)
+    if (publicKey.x === this.field.zero || publicKey.y === this.field.zero)
       throw new Error("User not registered!");
 
-    return [pk.x, pk.y];
+    return [publicKey.x, publicKey.y];
   }
 
   // fetches users approval from erc20 token
@@ -642,7 +652,7 @@ export class EERC {
   // returns the token id from token address
   async tokenId(tokenAddress: string) {
     const data = await this.client.readContract({
-      abi: this.abi,
+      abi: this.erc34Abi,
       address: this.contractAddress as `0x${string}`,
       functionName: "tokenIds",
       args: [tokenAddress as `0x${string}`],

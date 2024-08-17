@@ -33,6 +33,7 @@ export function useEERC(
 
   const [name, setName] = useState<string>("");
   const [symbol, setSymbol] = useState<string>("");
+  const [registrarAddress, setRegistrarAddress] = useState<string>("");
 
   // isRegistered to the contract
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
@@ -40,36 +41,17 @@ export function useEERC(
   // flag for all data fetched
   const [isAllDataFetched, setIsAllDataFetched] = useState<boolean>(false);
 
-  // get converter and auditor public key
-  const {
-    data: converterAndAuditorData,
-    isFetched: isConverterAndAuditorKeyFetched,
-  } = useContractReads({
-    contracts: [
-      {
-        ...eercContract,
-        functionName: "isConverter",
-      },
-      {
-        ...eercContract,
-        functionName: "getAuditorPublicKey",
-      },
-    ],
-    enabled: Boolean(contractAddress),
-    watch: true,
-  });
-
   // get user data for checking is user registered
   const { data: userData, isFetched: isUserDataFetched } = useContractRead({
     ...eercContract,
     functionName: "getUser",
-    args: [wallet?.account.address],
-    enabled: Boolean(eerc && wallet.account.address),
+    args: [wallet?.account?.address],
+    enabled: Boolean(eerc && wallet?.account?.address),
     watch: true,
   });
 
-  // get name and symbol of the EERC
-  const { data: nameAndSymbolData, isFetched: isNameAndSymbolFetched } =
+  // get contract data
+  const { data: contractData, isFetched: isContractDataFetched } =
     useContractReads({
       contracts: [
         {
@@ -82,51 +64,70 @@ export function useEERC(
           functionName: "symbol",
           args: [],
         },
+        {
+          ...eercContract,
+          functionName: "registrar",
+        },
+        {
+          ...eercContract,
+          functionName: "isConverter",
+        },
       ],
       enabled: Boolean(contractAddress),
     });
 
-  // update converter and auditor public key data
+  const {
+    data: auditorPublicKeyData,
+    isFetched: isAuditorPublicKeyFetched,
+    refetch,
+  } = useContractRead({
+    ...eercContract,
+    functionName: "getAuditorPublicKey",
+    args: [],
+    enabled: Boolean(contractAddress),
+    watch: true,
+  });
+
+  // update auditor public key
   useEffect(() => {
-    if (converterAndAuditorData && isConverterAndAuditorKeyFetched) {
-      const [_isConverter, _auditorPublicKey] = converterAndAuditorData;
-      if (_isConverter.status === "success") {
-        setIsConverter(_isConverter.result as boolean);
-      }
-      if (_auditorPublicKey.status === "success") {
-        setAuditorPublicKey(_auditorPublicKey.result as bigint[]);
-      }
+    if (auditorPublicKeyData && isAuditorPublicKeyFetched) {
+      setAuditorPublicKey(auditorPublicKeyData as bigint[]);
     }
-  }, [converterAndAuditorData, isConverterAndAuditorKeyFetched]);
+  }, [auditorPublicKeyData, isAuditorPublicKeyFetched]);
 
   // update name and symbol data
   useEffect(() => {
-    if (nameAndSymbolData && isNameAndSymbolFetched && !isConverter) {
-      const [nameData, symbolData] = nameAndSymbolData;
+    if (contractData && isContractDataFetched && !isConverter) {
+      const [nameData, symbolData, registrarAddress, isConverterData] =
+        contractData;
       if (nameData.status === "success") setName(nameData.result as string);
       if (symbolData.status === "success")
         setSymbol(symbolData.result as string);
+
+      if (registrarAddress.status === "success")
+        setRegistrarAddress(registrarAddress.result as string);
+
+      if (isConverterData.status === "success")
+        setIsConverter(isConverterData.result as boolean);
     }
-  }, [nameAndSymbolData, isNameAndSymbolFetched, isConverter]);
+  }, [contractData, isContractDataFetched, isConverter]);
 
   // update user registration status
   useEffect(() => {
     if (userData && isUserDataFetched) {
-      const publicKey = userData as { x: bigint; y: bigint };
-      setIsRegistered(
-        !(publicKey.x === eerc?.field.zero || publicKey.y === eerc?.field.zero),
-      );
+      const { publicKey } = userData as { publicKey: { x: bigint; y: bigint } };
+      setIsRegistered(!(publicKey.x === 0n && publicKey.y === 0n));
     }
-  }, [userData, isUserDataFetched, eerc?.field.zero]);
+  }, [userData, isUserDataFetched]);
 
   // check is all data fetched
   useEffect(() => {
     if (
-      isConverterAndAuditorKeyFetched &&
       isUserDataFetched &&
-      isNameAndSymbolFetched &&
+      isContractDataFetched &&
       eerc &&
-      wallet?.account?.address
+      wallet?.account?.address &&
+      isAuditorPublicKeyFetched
     ) {
       setIsAllDataFetched(true);
     }
@@ -135,19 +136,26 @@ export function useEERC(
       setIsAllDataFetched(false);
     };
   }, [
-    isConverterAndAuditorKeyFetched,
     isUserDataFetched,
-    isNameAndSymbolFetched,
+    isContractDataFetched,
     eerc,
     wallet?.account?.address,
+    isAuditorPublicKeyFetched,
   ]);
 
   useEffect(() => {
-    if (client && wallet && contractAddress && isConverter !== undefined) {
+    if (
+      client &&
+      wallet?.account.address &&
+      contractAddress &&
+      isConverter !== undefined &&
+      registrarAddress.length
+    ) {
       const _eerc = new EERC(
         client,
         wallet,
         contractAddress as `0x${string}`,
+        registrarAddress as `0x${string}`,
         isConverter as boolean,
         decryptionKey,
       );
@@ -169,13 +177,28 @@ export function useEERC(
       setEERC(undefined);
       setIsInitialized(false);
     };
-  }, [client, wallet, contractAddress, decryptionKey, isConverter]);
+  }, [
+    client,
+    wallet,
+    contractAddress,
+    isConverter,
+    registrarAddress,
+    decryptionKey,
+  ]);
+
+  const isAuditorKeySet = useMemo(() => {
+    return Boolean(
+      auditorPublicKey.length &&
+        auditorPublicKey[0] !== 0n &&
+        auditorPublicKey[1] !== 0n,
+    );
+  }, [auditorPublicKey]);
 
   // sets auditor public key
   const setAuditor = useCallback(
     async (publicKey: Point): Promise<`0x${string}`> => {
       try {
-        if (!eerc) {
+        if (!eerc || !wallet || !contractAddress || !refetch) {
           throw new Error("EERC not initialized");
         }
         logMessage(`Setting auditor public key: ${publicKey}`);
@@ -186,12 +209,16 @@ export function useEERC(
           args: [publicKey],
         });
 
+        await refetch();
+
         return transactionHash;
       } catch (error) {
+        console.log("error", error);
+
         throw new Error(error as string);
       }
     },
-    [eerc, wallet, contractAddress],
+    [eerc, wallet, contractAddress, refetch],
   );
 
   // sets auditor public key as user's public key
@@ -221,11 +248,11 @@ export function useEERC(
   const isAddressRegistered = useCallback(
     async (address: `0x${string}`) => {
       try {
-        const publicKey = (await client.readContract({
+        const { publicKey } = (await client.readContract({
           ...eercContract,
           functionName: "getUser",
           args: [address],
-        })) as { x: bigint; y: bigint };
+        })) as { publicKey: { x: bigint; y: bigint } };
 
         return {
           isRegistered: !(publicKey.x === 0n || publicKey.y === 0n),
@@ -252,11 +279,7 @@ export function useEERC(
     isConverter, // is contract converter
     publicKey: eerc?.publicKey ?? [], // user's public key
     auditorPublicKey, // auditor's public key
-    isAuditorKeySet: Boolean(
-      auditorPublicKey.length &&
-        auditorPublicKey[0] !== 0n &&
-        auditorPublicKey[1] !== 0n,
-    ), // is auditor's public key set if not need to set before interacting with the contract
+    isAuditorKeySet, // is auditor's public key set if not need to set before interacting with the contract
     name, // EERC name, (only for stand-alone version)
     symbol, // EERC symbol, (only for stand-alone version)
 
