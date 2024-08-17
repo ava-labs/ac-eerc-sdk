@@ -1,4 +1,3 @@
-import { describe, expect, test } from "bun:test";
 import { Scalar } from "../../src/crypto/scalar";
 import { shiftRightTestCases } from "./scalar.test.cases";
 

@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, test } from "bun:test";
 import { FF } from "../../src/crypto/ff";
 import {
   TEST_PRIME,
@@ -32,12 +31,10 @@ describe("Finite Field", () => {
       expect(field.newElement(input)).toBe(expected);
     }
 
-    for (const { input, name } of newElementLargeNumberTestCases) {
-      test(`newElement should handle ${name} numbers`, () => {
-        const result = field.newElement(input);
-        expect(result).toBeGreaterThanOrEqual(0n);
-        expect(result).toBeLessThan(prime);
-      });
+    for (const { input } of newElementLargeNumberTestCases) {
+      const result = field.newElement(input);
+      expect(result).toBeGreaterThanOrEqual(0n);
+      expect(result).toBeLessThan(prime);
     }
   });
 
@@ -77,7 +74,7 @@ describe("Finite Field", () => {
     }
   });
 
-  test("modInverse", () => {
+  describe("modInverse", () => {
     test("Inverse of 1 is 1", () => {
       expect(field.modInverse(1n)).toBe(1n);
     });
