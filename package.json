@@ -1,40 +1,53 @@
 {
   "name": "@avalabs/ac-eerc-sdk",
   "version": "1.0.0",
-  "module": "src/index.ts",
+  "module": "src/index.mjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "package.json", "README.md"],
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
   "devDependencies": {
-    "@types/bun": "latest",
+    "@biomejs/biome": "^1.8.3",
     "@types/react": "^18.3.3",
-    "react": "^18.3.1",
-    "@biomejs/biome": "^1.8.3"
+    "react": "^18.3.1"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "engines": {
-    "node": ">=20.11.0"
+    "node": ">=18.0.0"
   },
   "private": true,
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist",
-    "test": "bun test",
+    "build": "rimraf ./dist && tsup",
+    "dev": "tsup --watch",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "watch": "bun build ./src/index.ts --outdir ./dist --watch"
+    "test": "biome test ."
   },
   "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "dependencies": {
+    "@babel/core": "7.4.0",
+    "@babel/preset-env": "7.1.6",
     "blake-hash": "^2.0.0",
     "ethers": "6.13.1",
     "js-sha256": "^0.11.0",
     "react-use": "^17.5.0",
+    "rimraf": "^6.0.1",
     "snarkjs": "^0.7.4",
     "tiny-msgpack": "^2.2.0",
-    "xxhash-wasm": "^1.0.2",
+    "tsup": "^8.2.4",
     "viem": "^1.21.4",
-    "wagmi": "^1.4.13"
+    "wagmi": "^1.4.13",
+    "xxhash-wasm": "^1.0.2"
   }
 }
