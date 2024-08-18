@@ -1,10 +1,11 @@
 {
   "name": "@avalabs/ac-eerc-sdk",
   "version": "1.0.0",
-  "module": "src/index.mjs",
-  "main": "dist/index.js",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "package.json", "README.md"],
+  "files": ["dist"],
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
     "@jest/types": "^29.6.3",
@@ -13,13 +14,16 @@
     "jest": "^29.7.0",
     "react": "^18.3.1",
     "ts-jest": "^29.2.4",
-    "ts-node": "^10.9.2"
-  },
-  "peerDependencies": {
+    "ts-node": "^10.9.2",
     "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "viem": "^1.21.4",
+    "wagmi": "^1.4.13"
   },
   "private": true,
   "scripts": {
@@ -28,13 +32,6 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "test": "jest"
-  },
-  "type": "module",
-  "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
-    }
   },
   "dependencies": {
     "@babel/core": "7.4.0",
@@ -47,8 +44,6 @@
     "snarkjs": "^0.7.4",
     "tiny-msgpack": "^2.2.0",
     "tsup": "^8.2.4",
-    "viem": "^1.21.4",
-    "wagmi": "^1.4.13",
     "xxhash-wasm": "^1.0.2"
   }
 }

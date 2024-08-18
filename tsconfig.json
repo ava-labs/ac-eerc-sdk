@@ -5,6 +5,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
+    "incremental": false,
 
     // Type checking
     "strict": true,

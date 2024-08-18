@@ -14,8 +14,6 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   minify: true,
-  target: "es2021",
-  outDir: "dist",
-  external: ["react", "react-dom", "wagmi", "viem", "ethers"],
+  treeshake: true,
   tsconfig: "./tsconfig.json",
 });

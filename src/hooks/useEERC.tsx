@@ -144,8 +144,6 @@ export function useEERC(
     isAuditorPublicKeyFetched,
   ]);
 
-  console.log("xDD");
-
   useEffect(() => {
     if (
       client &&
