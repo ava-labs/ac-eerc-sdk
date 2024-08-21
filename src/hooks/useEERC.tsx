@@ -48,7 +48,6 @@ export function useEERC(
     functionName: "getUser",
     args: [wallet?.account?.address],
     enabled: Boolean(eerc && wallet?.account?.address),
-    watch: true,
   });
 
   // get contract data
@@ -74,20 +73,16 @@ export function useEERC(
           functionName: "isConverter",
         },
       ],
-      enabled: Boolean(contractAddress),
     });
 
-  const {
-    data: auditorPublicKeyData,
-    isFetched: isAuditorPublicKeyFetched,
-    refetch,
-  } = useContractRead({
-    ...eercContract,
-    functionName: "getAuditorPublicKey",
-    args: [],
-    enabled: Boolean(contractAddress),
-    watch: true,
-  });
+  const { data: auditorPublicKeyData, isFetched: isAuditorPublicKeyFetched } =
+    useContractRead({
+      ...eercContract,
+      functionName: "getAuditorPublicKey",
+      args: [],
+      enabled: Boolean(contractAddress),
+      watch: true,
+    });
 
   // update auditor public key
   useEffect(() => {
@@ -98,9 +93,10 @@ export function useEERC(
 
   // update name and symbol data
   useEffect(() => {
-    if (contractData && isContractDataFetched && !isConverter) {
+    if (contractData && isContractDataFetched) {
       const [nameData, symbolData, registrarAddress, isConverterData] =
         contractData;
+
       if (nameData.status === "success") setName(nameData.result as string);
       if (symbolData.status === "success")
         setSymbol(symbolData.result as string);
@@ -111,7 +107,7 @@ export function useEERC(
       if (isConverterData.status === "success")
         setIsConverter(isConverterData.result as boolean);
     }
-  }, [contractData, isContractDataFetched, isConverter]);
+  }, [contractData, isContractDataFetched]);
 
   // update user registration status
   useEffect(() => {
@@ -126,8 +122,6 @@ export function useEERC(
     if (
       isUserDataFetched &&
       isContractDataFetched &&
-      eerc &&
-      wallet?.account?.address &&
       isAuditorPublicKeyFetched
     ) {
       setIsAllDataFetched(true);
@@ -136,19 +130,13 @@ export function useEERC(
     return () => {
       setIsAllDataFetched(false);
     };
-  }, [
-    isUserDataFetched,
-    isContractDataFetched,
-    eerc,
-    wallet?.account?.address,
-    isAuditorPublicKeyFetched,
-  ]);
+  }, [isUserDataFetched, isContractDataFetched, isAuditorPublicKeyFetched]);
 
   useEffect(() => {
     if (
-      client &&
-      wallet?.account.address &&
-      contractAddress &&
+      !!client &&
+      !!wallet?.account.address &&
+      !!contractAddress &&
       isConverter !== undefined &&
       registrarAddress.length
     ) {
@@ -169,8 +157,6 @@ export function useEERC(
         })
         .catch((error) => {
           logMessage(`Failed to initialize EERC: ${error}`);
-          setEERC(undefined);
-          setIsInitialized(false);
         });
     }
 
@@ -187,19 +173,11 @@ export function useEERC(
     decryptionKey,
   ]);
 
-  const isAuditorKeySet = useMemo(() => {
-    return Boolean(
-      auditorPublicKey.length &&
-        auditorPublicKey[0] !== 0n &&
-        auditorPublicKey[1] !== 0n,
-    );
-  }, [auditorPublicKey]);
-
   // sets auditor public key
   const setAuditor = useCallback(
     async (publicKey: Point): Promise<`0x${string}`> => {
       try {
-        if (!eerc || !wallet || !contractAddress || !refetch) {
+        if (!wallet || !contractAddress) {
           throw new Error("EERC not initialized");
         }
         logMessage(`Setting auditor public key: ${publicKey}`);
@@ -210,16 +188,15 @@ export function useEERC(
           args: [publicKey],
         });
 
-        await refetch();
+        // update auditor public key
+        setAuditorPublicKey([publicKey[0], publicKey[1]]);
 
         return transactionHash;
       } catch (error) {
-        console.log("error", error);
-
         throw new Error(error as string);
       }
     },
-    [eerc, wallet, contractAddress, refetch],
+    [wallet, contractAddress],
   );
 
   // sets auditor public key as user's public key
@@ -260,10 +237,7 @@ export function useEERC(
           error: null,
         };
       } catch {
-        return {
-          isRegistered: false,
-          error: "Failed to check address registration",
-        };
+        throw new Error("Failed to check address registration");
       }
     },
     [client, eercContract],
@@ -280,7 +254,11 @@ export function useEERC(
     isConverter, // is contract converter
     publicKey: eerc?.publicKey ?? [], // user's public key
     auditorPublicKey, // auditor's public key
-    isAuditorKeySet, // is auditor's public key set if not need to set before interacting with the contract
+    isAuditorKeySet: Boolean(
+      auditorPublicKey.length > 0 &&
+        auditorPublicKey[0] !== 0n &&
+        auditorPublicKey[1] !== 0n,
+    ),
     name, // EERC name, (only for stand-alone version)
     symbol, // EERC symbol, (only for stand-alone version)
 

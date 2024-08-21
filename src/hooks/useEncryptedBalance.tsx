@@ -40,13 +40,17 @@ export function useEncryptedBalance(
   });
 
   // fetch auditor public key
-  useContractRead({
+  const { data: auditorData } = useContractRead({
     ...eercContract,
     functionName: "getAuditorPublicKey",
     args: [],
-    onSuccess: (publicKey) => setAuditorPublicKey(publicKey as bigint[]),
     watch: true,
   });
+
+  useEffect(() => {
+    if (!auditorData) return;
+    setAuditorPublicKey(auditorData as bigint[]);
+  }, [auditorData]);
 
   useEffect(() => {
     // parses the encrypted balance
@@ -59,6 +63,8 @@ export function useEncryptedBalance(
     const parsedBalance = parseContractBalance(
       contractBalance as EncryptedBalance,
     );
+
+    if (parsedBalance.every((v) => v === 0n)) return;
 
     // if encrypted balance is not empty
     if (encryptedBalance) {

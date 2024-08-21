@@ -1,5 +1,5 @@
 import xxhash from "xxhash-wasm";
-import { IndexedDBStorage } from "../helpers";
+import { IndexedDBStorage, logMessage } from "../helpers";
 import type { BabyJub } from "./babyjub";
 import type { Point } from "./types";
 
@@ -24,7 +24,7 @@ export class BSGS {
       // if table exists in indexed db, use it
       if (tableFromDB) {
         this.table = tableFromDB;
-        console.log("Recovered table from IndexedDB");
+        logMessage("Recovered table from IndexedDB");
       } else {
         // if not found, fetch from the server
         const response = await fetch(this.tableUrl);

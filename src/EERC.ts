@@ -746,7 +746,7 @@ export class EERC {
         const amount = Scalar.calculate(whole as bigint, fractional as bigint);
         result.push({
           transactionHash: log.transactionHash,
-          amount,
+          amount: Scalar.recalculate(amount).join("."),
           sender: tx.from,
           type: decoded?.functionName as TransactionType,
           receiver:
@@ -756,7 +756,8 @@ export class EERC {
         });
       }
 
-      return result;
+      // reverse the array to get the latest transactions first
+      return result.reverse();
     } catch (e) {
       throw new Error(e as string);
     }

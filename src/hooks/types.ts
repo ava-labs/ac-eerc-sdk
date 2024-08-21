@@ -26,7 +26,7 @@ export type OperationResult = {
 
 export type DecryptedTransaction = {
   type: TransactionType;
-  amount: bigint;
+  amount: string;
   sender: `0x${string}`;
   receiver: `0x${string}` | null;
   transactionHash: `0x${string}`;
