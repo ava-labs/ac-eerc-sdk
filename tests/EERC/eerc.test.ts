@@ -55,6 +55,7 @@ describe("EERC", () => {
   const contractAddress = "0x1234567890123456789012345678901234567890";
   const registrarAddress = "0x0987654321098765432109876543210987654321";
   const decryptionKey = "testDecryptionKey";
+  const tableUrl = "example.com";
 
   beforeEach(() => {
     mockPublicClient = createPublicClient({}) as jest.Mocked<PublicClient>;
@@ -66,6 +67,7 @@ describe("EERC", () => {
       contractAddress,
       registrarAddress,
       false,
+      tableUrl,
       decryptionKey,
     );
 
