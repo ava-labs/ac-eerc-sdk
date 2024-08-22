@@ -7,7 +7,3 @@ export const MESSAGES = {
   REGISTER: (user: string, chainId: number) =>
     `AvaCloud\nRegistering user with\n Address:${user.toLowerCase()}\nChain ID: ${chainId.toString()}`,
 };
-
-// !IMPORTANT: This is a placeholder URL
-// leaving this as is for now, but it should be updated to the actual URL
-export const LOOKUP_TABLE_URL = "http://127.0.0.1:5500/lookup_table.json";

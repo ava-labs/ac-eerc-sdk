@@ -14,12 +14,7 @@ import {
   type OperationResult,
   TransactionType,
 } from "./hooks/types";
-import {
-  ERC34_ABI,
-  LOOKUP_TABLE_URL,
-  MESSAGES,
-  SNARK_FIELD_SIZE,
-} from "./utils";
+import { ERC34_ABI, MESSAGES, SNARK_FIELD_SIZE } from "./utils";
 import { REGISTRAR_ABI } from "./utils/Registrar.abi";
 
 export class EERC {
@@ -58,6 +53,7 @@ export class EERC {
     contractAddress: `0x${string}`,
     registrarAddress: `0x${string}`,
     isConverter: boolean,
+    lookupTableUrl: string,
     decryptionKey?: string,
   ) {
     this.client = client;
@@ -71,7 +67,7 @@ export class EERC {
     this.poseidon = new Poseidon(this.field, this.curve);
     this.proofGenerator = new ProofGenerator();
     this.decryptionKey = decryptionKey || "";
-    this.bsgs = new BSGS(LOOKUP_TABLE_URL, this.curve);
+    this.bsgs = new BSGS(lookupTableUrl, this.curve);
 
     if (this.decryptionKey) {
       const formatted = formatKeyForCurve(this.decryptionKey);
