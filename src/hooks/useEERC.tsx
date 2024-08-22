@@ -17,6 +17,7 @@ export function useEERC(
   client: PublicClient,
   wallet: WalletClient,
   contractAddress: string,
+  tableUrl: string,
   decryptionKey?: string,
 ): EERCHookResult {
   const eercContract = useMemo(
@@ -138,7 +139,8 @@ export function useEERC(
       !!wallet?.account.address &&
       !!contractAddress &&
       isConverter !== undefined &&
-      registrarAddress.length
+      registrarAddress.length &&
+      !!tableUrl
     ) {
       const _eerc = new EERC(
         client,
@@ -146,6 +148,7 @@ export function useEERC(
         contractAddress as `0x${string}`,
         registrarAddress as `0x${string}`,
         isConverter as boolean,
+        tableUrl,
         decryptionKey,
       );
 
@@ -171,6 +174,7 @@ export function useEERC(
     isConverter,
     registrarAddress,
     decryptionKey,
+    tableUrl,
   ]);
 
   // sets auditor public key
