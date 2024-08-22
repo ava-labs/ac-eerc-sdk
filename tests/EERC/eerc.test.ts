@@ -589,6 +589,8 @@ describe("EERC", () => {
         "",
       );
 
+      console.error = jest.fn();
+
       const result = await mockEERC.decryptContractBalance(cipher);
       expect(result).toEqual([0n, 0n]);
     });
