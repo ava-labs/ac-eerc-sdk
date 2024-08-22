@@ -22,6 +22,7 @@
     "lineWidth": 80
   },
   "files": {
-    "ignore": ["./dist", "./src/crypto/data/*"]
+    "ignore": ["./dist", "./tests/bsgs/data/*"],
+    "maxSize": 13000000
   }
 }
