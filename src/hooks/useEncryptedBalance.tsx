@@ -19,7 +19,7 @@ export function useEncryptedBalance(
   const [decryptedBalance, setDecryptedBalance] = useState<bigint[]>([]);
   const [encryptedBalance, setEncryptedBalance] = useState<bigint[]>([]);
   const [parsedDecryptedBalance, setParsedDecryptedBalance] = useState<
-    bigint[]
+    string[]
   >([]);
 
   const eercContract = useMemo(
@@ -97,7 +97,10 @@ export function useEncryptedBalance(
       );
 
       setDecryptedBalance(decBalance);
-      setParsedDecryptedBalance(parsedDecryptedBalance);
+      setParsedDecryptedBalance([
+        parsedDecryptedBalance[0].toString(),
+        parsedDecryptedBalance[1].toString().padStart(2, "0"),
+      ]);
       setIsDecrypting(false);
     } catch {
       throw new Error("Failed to decrypt balance");

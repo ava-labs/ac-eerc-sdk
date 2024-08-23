@@ -50,7 +50,7 @@ export const Scalar = {
     const toBeAdded = [0n, 0n];
 
     if (x > 0n) toBeSubtracted[0] = x;
-    else toBeSubtracted[1] = -x;
+    else toBeAdded[0] = -x;
 
     if (y > 0n) toBeSubtracted[1] = y;
     else toBeAdded[1] = -y;

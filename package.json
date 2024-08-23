@@ -26,7 +26,6 @@
     "viem": "^1.21.4",
     "wagmi": "^1.4.13"
   },
-  "private": true,
   "scripts": {
     "build": "rimraf ./dist && tsup",
     "dev": "tsup --watch",
@@ -47,5 +46,19 @@
     "tiny-msgpack": "^2.2.0",
     "tsup": "^8.2.4",
     "xxhash-wasm": "^1.0.2"
-  }
+  },
+  "description": "",
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ava-labs/ac-eerc-sdk.git"
+  },
+  "author": "avalabs",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ava-labs/ac-eerc-sdk/issues"
+  },
+  "homepage": "https://github.com/ava-labs/ac-eerc-sdk#readme"
 }

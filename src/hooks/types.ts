@@ -58,7 +58,7 @@ export type EERCHookResult = {
 
 export type UseEncryptedBalanceHookResult = {
   decryptedBalance: bigint[];
-  parsedDecryptedBalance: bigint[];
+  parsedDecryptedBalance: string[];
   encryptedBalance: bigint[];
   isDecrypting: boolean;
   auditorPublicKey: bigint[];
