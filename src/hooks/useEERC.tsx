@@ -125,6 +125,7 @@ export function useEERC(
       isContractDataFetched &&
       isAuditorPublicKeyFetched
     ) {
+      logMessage("All data fetched");
       setIsAllDataFetched(true);
     }
 
@@ -177,6 +178,15 @@ export function useEERC(
     tableUrl,
   ]);
 
+  // should generate the key
+  const shouldGenerateDecryptionKey = useMemo(() => {
+    if (!eerc) {
+      return false;
+    }
+
+    return isRegistered && !eerc?.isDecryptionKeySet;
+  }, [eerc, isRegistered]);
+
   // sets auditor public key
   const setAuditor = useCallback(
     async (publicKey: Point): Promise<`0x${string}`> => {
@@ -216,6 +226,14 @@ export function useEERC(
       throw new Error("EERC not initialized");
     }
     return eerc.register();
+  }, [eerc]);
+
+  // generate decryption key
+  const generateDecryptionKey = useCallback(() => {
+    if (!eerc) {
+      throw new Error("EERC not initialized");
+    }
+    return eerc.generateDecryptionKey();
   }, [eerc]);
 
   // decrypt the encrypted data by the auditor public key
@@ -265,6 +283,7 @@ export function useEERC(
     ),
     name, // EERC name, (only for stand-alone version)
     symbol, // EERC symbol, (only for stand-alone version)
+    shouldGenerateDecryptionKey,
 
     // functions
     register, // register user to the contract
@@ -272,6 +291,7 @@ export function useEERC(
     setMyselfAsAuditor, // set user's public key as auditor's public key
     auditorDecrypt, // auditor decryption
     isAddressRegistered, // function for checking address is registered or not
+    generateDecryptionKey, // generate decryption key
 
     // hooks
     useEncryptedBalance: useEncryptedBalanceHook,

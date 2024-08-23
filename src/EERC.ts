@@ -84,6 +84,34 @@ export class EERC {
     }
   }
 
+  public get isDecryptionKeySet() {
+    return !!this.decryptionKey;
+  }
+
+  public async generateDecryptionKey() {
+    if (!this.wallet || !this.client) {
+      throw new Error("Missing wallet or client!");
+    }
+
+    try {
+      const message = MESSAGES.REGISTER(
+        this.wallet.account.address,
+        this.client.chain.id,
+      );
+
+      // deriving the decryption key from the user signature
+      const signature = await this.wallet.signMessage({ message });
+      const key = getPrivateKeyFromSignature(signature);
+
+      this.decryptionKey = key;
+
+      return key;
+    } catch (error) {
+      console.error("Failed to generate decryption key", error);
+      throw new Error("Failed to generate decryption key!");
+    }
+  }
+
   // function to register a new user to the contract
   async register(): Promise<{
     key: string;
@@ -95,14 +123,8 @@ export class EERC {
     try {
       logMessage("Registering user to the contract");
       // message to sign
-      const message = MESSAGES.REGISTER(
-        this.wallet.account.address,
-        this.client.chain.id,
-      );
 
-      // deriving the decryption key from the user signature
-      const signature = await this.wallet.signMessage({ message });
-      const key = getPrivateKeyFromSignature(signature);
+      const key = await this.generateDecryptionKey();
       const formatted = formatKeyForCurve(key);
       const publicKey = this.curve.generatePublicKey(formatted);
 

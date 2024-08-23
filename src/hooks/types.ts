@@ -42,6 +42,8 @@ export type EERCHookResult = {
   isAuditorKeySet: boolean;
   name: string;
   symbol: string;
+  shouldGenerateDecryptionKey: boolean;
+  generateDecryptionKey: () => Promise<string>;
   register: () => Promise<{ key: string; transactionHash: string }>;
   setAuditor: (publicKey: Point) => Promise<`0x${string}`>;
   setMyselfAsAuditor: () => Promise<`0x${string}`>;
