@@ -57,4 +57,19 @@ export const Scalar = {
 
     return [toBeSubtracted, toBeAdded];
   },
+
+  parseEERCBalance(balance: bigint | [bigint, bigint]): string {
+    let whole: bigint;
+    let fractional: bigint;
+
+    if (Array.isArray(balance)) {
+      // need to make sure that balance is fresh
+      const fresh = Scalar.adjust(balance[0], balance[1]);
+      [whole, fractional] = fresh;
+    } else {
+      [whole, fractional] = Scalar.recalculate(balance);
+    }
+
+    return `${whole.toString()}.${fractional.toString().padStart(2, "0")}`;
+  },
 };

@@ -13,19 +13,12 @@ export type PPoint = {
   y: bigint;
 };
 
-export enum TransactionType {
-  MINT = "privateMint",
-  BURN = "privateBurn",
-  TRANSFER = "transfer",
-  REGISTER = "register",
-}
-
 export type OperationResult = {
   transactionHash: `0x${string}`;
 };
 
 export type DecryptedTransaction = {
-  type: TransactionType;
+  type: string;
   amount: string;
   sender: `0x${string}`;
   receiver: `0x${string}` | null;
@@ -58,9 +51,8 @@ export type EERCHookResult = {
 
 export type UseEncryptedBalanceHookResult = {
   decryptedBalance: bigint[];
-  parsedDecryptedBalance: string[];
+  parsedDecryptedBalance: string;
   encryptedBalance: bigint[];
-  isDecrypting: boolean;
   auditorPublicKey: bigint[];
   privateMint: (amount: bigint) => Promise<OperationResult>;
   privateBurn: (amount: bigint) => Promise<OperationResult>;

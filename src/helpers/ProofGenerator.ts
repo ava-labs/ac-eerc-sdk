@@ -3,12 +3,11 @@ import { logMessage } from "./logger";
 import type { IProof, ProofType } from "./types";
 
 export class ProofGenerator {
-  BASE_URL = "http://localhost:3000";
-
+  // currently only supports fetching from public folder in the root
   getPaths(type: ProofType) {
     return {
-      wasm: `${this.BASE_URL}/${type}.wasm`,
-      zkey: `${this.BASE_URL}/${type}.zkey`,
+      wasm: `/${type}.wasm`,
+      zkey: `/${type}.zkey`,
     };
   }
 

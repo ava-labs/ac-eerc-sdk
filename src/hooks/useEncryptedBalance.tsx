@@ -14,13 +14,11 @@ export function useEncryptedBalance(
   wallet: WalletClient,
   tokenAddress?: `0x${string}`,
 ): UseEncryptedBalanceHookResult {
-  const [isDecrypting, setIsDecrypting] = useState(false);
   const [auditorPublicKey, setAuditorPublicKey] = useState<bigint[]>([]);
   const [decryptedBalance, setDecryptedBalance] = useState<bigint[]>([]);
   const [encryptedBalance, setEncryptedBalance] = useState<bigint[]>([]);
-  const [parsedDecryptedBalance, setParsedDecryptedBalance] = useState<
-    string[]
-  >([]);
+  const [parsedDecryptedBalance, setParsedDecryptedBalance] =
+    useState<string>("");
 
   const eercContract = useMemo(
     () => ({
@@ -79,29 +77,17 @@ export function useEncryptedBalance(
   useAsync(async () => {
     if (!encryptedBalance.length || !eerc) return;
 
-    setIsDecrypting(true);
-
     try {
       // decrypt the encrypted balance
       const decBalance = await eerc.decryptContractBalance(encryptedBalance);
       if (!decBalance) {
         setDecryptedBalance([]);
-        setParsedDecryptedBalance([]);
+        setParsedDecryptedBalance("");
         return;
       }
 
-      // adjust the decrypted balance
-      const parsedDecryptedBalance = Scalar.adjust(
-        decBalance[0],
-        decBalance[1],
-      );
-
       setDecryptedBalance(decBalance);
-      setParsedDecryptedBalance([
-        parsedDecryptedBalance[0].toString(),
-        parsedDecryptedBalance[1].toString().padStart(2, "0"),
-      ]);
-      setIsDecrypting(false);
+      setParsedDecryptedBalance(Scalar.parseEERCBalance(decBalance));
     } catch {
       throw new Error("Failed to decrypt balance");
     }
@@ -194,7 +180,6 @@ export function useEncryptedBalance(
     decryptedBalance, // decrypted balance of the user
     parsedDecryptedBalance, // parsed decrypted balance of the user
     encryptedBalance, // encrypted balance of the user
-    isDecrypting: isDecrypting || !decryptedBalance.length, // is decrypting the balance
     auditorPublicKey, // auditor's public key
 
     // functions
