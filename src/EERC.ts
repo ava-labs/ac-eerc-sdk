@@ -725,6 +725,7 @@ export class EERC {
     const result: DecryptedTransaction[] = [];
 
     try {
+      logMessage("Fetching logs...");
       const currentBlock = await this.client.getBlockNumber();
       const events = ERC34_ABI.filter((element) => element.type === "event");
 
@@ -735,6 +736,8 @@ export class EERC {
         toBlock: currentBlock,
         events,
       })) as NamedEvents[];
+
+      logMessage(`Fetched ${logs.length} logs from the contract`);
 
       for (const log of logs) {
         if (!log.transactionHash) return [];
@@ -781,6 +784,8 @@ export class EERC {
               : null,
         });
       }
+
+      logMessage(`Transactions decrypted: ${result.length}`);
 
       // reverse the array to get the latest transactions first
       return result.reverse();

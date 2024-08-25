@@ -31,9 +31,11 @@ export class BSGS {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+        logMessage("Fetched table from the server");
         this.table = await response.json();
         // save table to indexed db
         this.storage.saveTable(this.table as Record<string, number>);
+        logMessage("Saved table to IndexedDB");
       }
 
       const { h64Raw } = await xxhash();
