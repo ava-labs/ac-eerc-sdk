@@ -619,8 +619,6 @@ export class EERC {
         auditorEncKey: encryptionKey.map(String),
       };
 
-      console.log(JSON.stringify(input, null, 2));
-
       const proof = await this.proofGenerator.generateProof(
         ProofType.TRANSFER,
         input,
