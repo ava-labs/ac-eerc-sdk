@@ -16,4 +16,5 @@ export default defineConfig({
   minify: true,
   treeshake: true,
   tsconfig: "./tsconfig.json",
+  external: ["react", "wagmi", "viem"],
 });

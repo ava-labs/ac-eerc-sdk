@@ -269,6 +269,18 @@ export function useEERC(
   const useEncryptedBalanceHook = (tokenAddress?: `0x${string}`) =>
     useEncryptedBalance(eerc, contractAddress, wallet, tokenAddress);
 
+  // check is user auditor
+  const areYouAuditor = useMemo(() => {
+    if (!eerc || !auditorPublicKey.length) {
+      return false;
+    }
+
+    return (
+      auditorPublicKey[0] === eerc?.publicKey[0] &&
+      auditorPublicKey[1] === eerc?.publicKey[1]
+    );
+  }, [eerc, auditorPublicKey]);
+
   return {
     isInitialized, // is sdk initialized
     isAllDataFetched, // is all data fetched
@@ -284,6 +296,7 @@ export function useEERC(
     name, // EERC name, (only for stand-alone version)
     symbol, // EERC symbol, (only for stand-alone version)
     shouldGenerateDecryptionKey,
+    areYouAuditor,
 
     // functions
     register, // register user to the contract

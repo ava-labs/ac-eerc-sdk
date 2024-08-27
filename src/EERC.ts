@@ -1,5 +1,4 @@
-import { isAddress } from "ethers";
-import { type Log, decodeFunctionData } from "viem";
+import { type Log, decodeFunctionData, isAddress } from "viem";
 import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { BSGS } from "./crypto/bsgs";

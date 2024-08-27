@@ -58,6 +58,8 @@ export class BSGS {
     if (!this.referencePoint) throw new Error("Reference point is not set");
 
     let key = await this.hashPoint(point);
+    // need to pad the key to 16 characters
+    key = key.padStart(16, "0");
     let value = this.table?.[key];
 
     if (value !== undefined) return BigInt(value);
