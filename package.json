@@ -1,11 +1,11 @@
 {
   "name": "@avalabs/ac-eerc-sdk",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "package.json"],
+  "files": ["dist", "README.md", "package.json"],
   "devDependencies": {
     "@babel/core": "7.4.0",
     "@babel/preset-env": "7.1.6",
@@ -32,7 +32,7 @@
     "wagmi": "^1.4.13"
   },
   "scripts": {
-    "build": "rimraf ./dist && tsup",
+    "build": "tsup",
     "dev": "tsup --watch",
     "lint": "biome check .",
     "format": "biome format --write .",
