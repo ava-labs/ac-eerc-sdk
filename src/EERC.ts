@@ -7,8 +7,12 @@ import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
 import { Poseidon } from "./crypto/poseidon";
 import { Scalar } from "./crypto/scalar";
 import type { Point } from "./crypto/types";
-import { ProofGenerator, ProofType, logMessage } from "./helpers";
-import type { DecryptedTransaction, OperationResult } from "./hooks/types";
+import { type IProof, type IWasmProof, logMessage } from "./helpers";
+import type {
+  DecryptedTransaction,
+  IProveFunction,
+  OperationResult,
+} from "./hooks/types";
 import { ERC34_ABI, MESSAGES, SNARK_FIELD_SIZE } from "./utils";
 import { REGISTRAR_ABI } from "./utils/Registrar.abi";
 
@@ -21,7 +25,6 @@ export class EERC {
   public field: FF;
   public poseidon: Poseidon;
   public bsgs: BSGS;
-  public proofGenerator: ProofGenerator;
 
   // contract field
   public contractAddress: `0x${string}`;
@@ -34,6 +37,12 @@ export class EERC {
   // user field
   private decryptionKey: string;
   public publicKey: bigint[] = [];
+
+  // prove func
+  public proveFunc: (
+    data: string,
+    proofType: "REGISTER" | "MINT" | "BURN" | "TRANSFER",
+  ) => Promise<IWasmProof>;
 
   // burn user is used for private burn transactions
   // instead of burning tokens, they are transferred to the burn user
@@ -49,6 +58,7 @@ export class EERC {
     registrarAddress: `0x${string}`,
     isConverter: boolean,
     lookupTableUrl: string,
+    proveFunc: IProveFunction,
     decryptionKey?: string,
   ) {
     this.client = client;
@@ -56,11 +66,11 @@ export class EERC {
     this.contractAddress = contractAddress;
     this.registrarAddress = registrarAddress;
     this.isConverter = isConverter;
+    this.proveFunc = proveFunc;
 
     this.field = new FF(SNARK_FIELD_SIZE);
     this.curve = new BabyJub(this.field);
     this.poseidon = new Poseidon(this.field, this.curve);
-    this.proofGenerator = new ProofGenerator();
     this.decryptionKey = decryptionKey || "";
     this.bsgs = new BSGS(lookupTableUrl, this.curve);
 
@@ -124,8 +134,8 @@ export class EERC {
       const publicKey = this.curve.generatePublicKey(formatted);
 
       const input = {
-        sk: String(formatted),
-        pk: publicKey.map(String),
+        PrivateKey: String(formatted),
+        PublicKey: publicKey.map(String),
       };
 
       const check = async () => {
@@ -152,18 +162,16 @@ export class EERC {
         };
       }
 
-      // proof generated for the transaction
-      const proof = await this.proofGenerator.generateProof(
-        ProofType.REGISTER,
-        input,
-      );
+      // generate proof for the transaction
+      const proof = await this.proveFunc(JSON.stringify(input), "REGISTER");
+      const publicInputs = publicKey.map(String);
 
       logMessage("Sending transaction");
       const transactionHash = await this.wallet.writeContract({
         abi: this.registrarAbi,
         address: this.registrarAddress,
         functionName: "register",
-        args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: proof.input }],
+        args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: publicInputs }],
       });
 
       this.decryptionKey = key;
@@ -183,6 +191,7 @@ export class EERC {
   //        400 = 4.00
   //         50 = 0.50
   async privateMint(
+    recipient: `0x${string}`,
     totalMintAmount: bigint,
     auditorPublicKey: Point,
   ): Promise<OperationResult> {
@@ -198,13 +207,18 @@ export class EERC {
       );
 
     logMessage("Minting encrypted tokens");
-    const privateKey = formatKeyForCurve(this.decryptionKey);
+
+    // fetch the receiver public key
+    const receiverPublicKey = await this.fetchPublicKey(recipient);
 
     // encrypt the total mint amount
     const { whole: wholeEncrypted, fractional: fractionalEncrypted } =
-      await this.curve.encryptAmount(totalMintAmount, this.publicKey as Point);
+      await this.curve.encryptAmount(
+        totalMintAmount,
+        receiverPublicKey as Point,
+      );
 
-    const { cipher, nonce, encryptionKey, encryptionRandom, authKey } =
+    const { cipher, nonce, encryptionRandom, authKey } =
       await this.poseidon.processPoseidonEncryption({
         inputs: [
           wholeEncrypted.originalValue,
@@ -214,27 +228,38 @@ export class EERC {
       });
 
     const input = {
-      sk: privateKey.toString(),
-      pk: this.publicKey.map(String),
+      PublicKey: receiverPublicKey.map(String),
       MintAmountWhole: wholeEncrypted.originalValue.toString(),
-      MintAmountFraction: fractionalEncrypted.originalValue.toString(),
-      MintAmountWholeC1: wholeEncrypted.cipher.c1.map(String),
-      MintAmountWholeC2: wholeEncrypted.cipher.c2.map(String),
-      MintAmountFractionC1: fractionalEncrypted.cipher.c1.map(String),
-      MintAmountFractionC2: fractionalEncrypted.cipher.c2.map(String),
-      auditorPubKey: auditorPublicKey.map(String),
-      auditorSharedKey: authKey.map(String),
-      auditorCiphertextNonce: nonce.toString(),
-      auditCiphertext: cipher.map(String),
-      auditorEncKey: encryptionKey.map(String),
-      auditorEncKeyRandom: encryptionRandom.toString(),
+      MintAmountFractional: fractionalEncrypted.originalValue.toString(),
+      MintAmountWholeEncrypted: [
+        ...wholeEncrypted.cipher.c1.map(String),
+        ...wholeEncrypted.cipher.c2.map(String),
+      ],
+      MintAmountFractionalEncrypted: [
+        ...fractionalEncrypted.cipher.c1.map(String),
+        ...fractionalEncrypted.cipher.c2.map(String),
+      ],
+      MintAmountRandomness: [
+        wholeEncrypted.random,
+        fractionalEncrypted.random,
+      ].map(String),
+      AuditorPublicKey: auditorPublicKey.map(String),
+      AuditorCiphertext: cipher.map(String),
+      AuditorPoseidonAuthKey: authKey.map(String),
+      AuditorPoseidonNonce: nonce.toString(),
+      AuditorPoseidonRandom: encryptionRandom.toString(),
     };
 
-    // generate proof for the transaction
-    const proof = await this.proofGenerator.generateProof(
-      ProofType.MINT,
-      input,
-    );
+    const proof = await this.proveFunc(JSON.stringify(input), "MINT");
+    const publicInputs = [
+      ...input.PublicKey,
+      ...input.MintAmountWholeEncrypted,
+      ...input.MintAmountFractionalEncrypted,
+      ...input.AuditorPublicKey,
+      ...input.AuditorCiphertext,
+      ...input.AuditorPoseidonAuthKey,
+      input.AuditorPoseidonNonce,
+    ];
 
     // write the transaction to the contract
     const transactionHash = await this.wallet.writeContract({
@@ -247,7 +272,7 @@ export class EERC {
           a: proof.a,
           b: proof.b,
           c: proof.c,
-          inputs: proof.input,
+          inputs: publicInputs,
         },
       ],
     });
@@ -288,7 +313,7 @@ export class EERC {
       abi: this.erc34Abi,
       address: this.contractAddress,
       functionName: "privateBurn",
-      args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: proof.input }],
+      args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: proof.inputs }],
     });
 
     return { transactionHash };
@@ -328,7 +353,7 @@ export class EERC {
       functionName: "transfer",
       args: [
         to,
-        { a: proof.a, b: proof.b, c: proof.c, inputs: proof.input },
+        { a: proof.a, b: proof.b, c: proof.c, inputs: proof.inputs },
         tokenId,
       ],
     });
@@ -494,10 +519,10 @@ export class EERC {
         a2_float_c2: toBeAddedEncrypted.cipher[1]?.c2.map(String),
       };
 
-      const proof = await this.proofGenerator.generateProof(
-        ProofType.BURN,
-        input,
-      );
+      const proof = (await this.proveFunc(
+        JSON.stringify(input),
+        "BURN",
+      )) as IProof;
 
       logMessage("Sending transaction");
       const transactionHash = await this.wallet.writeContract({
@@ -510,7 +535,7 @@ export class EERC {
             a: proof.a,
             b: proof.b,
             c: proof.c,
-            inputs: proof.input,
+            inputs: proof.inputs,
           },
           tokenId,
         ],
@@ -566,64 +591,73 @@ export class EERC {
       const { whole: wholeReceiver, fractional: fractionalReceiver } =
         await this.curve.encryptAmount(amount, receiverPublicKey);
 
-      const { cipher, nonce, encryptionKey, encryptionRandom, authKey } =
+      const { cipher, nonce, encryptionRandom, authKey } =
         await this.poseidon.processPoseidonEncryption({
           inputs: [transferWhole, transferFractional],
           publicKey: auditorPublicKey as Point,
         });
 
       const input = {
-        obd: decryptedBalance[0]?.toString(),
-        obf: decryptedBalance[1]?.toString(),
-        old_balance_tot: senderTotalBalance.toString(),
-        new_balance_dec: newWhole.toString(),
-        new_balance_float: newFractional.toString(),
-        ad: transferWhole.toString(),
-        af: transferFractional.toString(),
-        a1_dec: toBeSubtracted[0]?.toString(),
-        a1_float: toBeSubtracted[1]?.toString(),
-        a2_dec: toBeAdded[0]?.toString(),
-        a2_float: toBeAdded[1]?.toString(),
-        sender_sk: privateKey.toString(),
-        sender_pk: this.publicKey.map(String),
-        obd_c1: [encryptedBalance[0], encryptedBalance[1]].map(String),
-        obd_c2: [encryptedBalance[2], encryptedBalance[3]].map(String),
-        obf_c1: [encryptedBalance[4], encryptedBalance[5]].map(String),
-        obf_c2: [encryptedBalance[6], encryptedBalance[7]].map(String),
-
-        a1_dec_c1: toBeSubtractedEncrypted.cipher[0]?.c1.map(String),
-        a1_dec_c2: toBeSubtractedEncrypted.cipher[0]?.c2.map(String),
-        a1_float_c1: toBeSubtractedEncrypted.cipher[1]?.c1.map(String),
-        a1_float_c2: toBeSubtractedEncrypted.cipher[1]?.c2.map(String),
-
-        a2_dec_c1: toBeAddedEncrypted.cipher[0]?.c1.map(String),
-        a2_dec_c2: toBeAddedEncrypted.cipher[0]?.c2.map(String),
-        a2_float_c1: toBeAddedEncrypted.cipher[1]?.c1.map(String),
-        a2_float_c2: toBeAddedEncrypted.cipher[1]?.c2.map(String),
-
-        receiver_pk: receiverPublicKey.map(String),
-        recv_elgamal_random: [
+        SenderPrivateKey: privateKey.toString(),
+        SenderPublicKey: this.publicKey.map(String),
+        SenderWholeBalanceOld: decryptedBalance[0]?.toString(),
+        SenderFractionalBalanceOld: decryptedBalance[1]?.toString(),
+        SenderBalanceOld: senderTotalBalance.toString(),
+        TransferAmountWhole: transferWhole.toString(),
+        TransferAmountFractional: transferFractional.toString(),
+        SenderWholeBalanceNew: newWhole.toString(),
+        SenderFractionalBalanceNew: newFractional.toString(),
+        EncryptedSenderBalanceOld: encryptedBalance.map(String),
+        ToBeSubtracted: toBeSubtracted.map(String),
+        ToBeAdded: toBeAdded.map(String),
+        EncryptedToBeSubtracted: [
+          ...toBeSubtractedEncrypted.cipher[0].c1.map(String),
+          ...toBeSubtractedEncrypted.cipher[0].c2.map(String),
+          ...toBeSubtractedEncrypted.cipher[1].c1.map(String),
+          ...toBeSubtractedEncrypted.cipher[1].c2.map(String),
+        ],
+        EncryptedToBeAdded: [
+          ...toBeAddedEncrypted.cipher[0].c1.map(String),
+          ...toBeAddedEncrypted.cipher[0].c2.map(String),
+          ...toBeAddedEncrypted.cipher[1].c1.map(String),
+          ...toBeAddedEncrypted.cipher[1].c2.map(String),
+        ],
+        ReceiverPublicKey: receiverPublicKey.map(String),
+        ReceiverEncryptedAmount: [
+          ...wholeReceiver.cipher.c1.map(String),
+          ...wholeReceiver.cipher.c2.map(String),
+          ...fractionalReceiver.cipher.c1.map(String),
+          ...fractionalReceiver.cipher.c2.map(String),
+        ],
+        ReceiverAmtRandom: [
           wholeReceiver.random,
           fractionalReceiver.random,
         ].map(String),
-        receiver_amount_dec_c1: wholeReceiver.cipher.c1.map(String),
-        receiver_amount_dec_c2: wholeReceiver.cipher.c2.map(String),
-        receiver_amount_float_c1: fractionalReceiver.cipher.c1.map(String),
-        receiver_amount_float_c2: fractionalReceiver.cipher.c2.map(String),
-        auditorSharedKey: authKey.map(String),
-        auditorEncKeyRandom: encryptionRandom.toString(),
-        auditorPubKey: auditorPublicKey.map(String),
-        auditorCiphertextNonce: nonce.toString(),
-        auditCiphertext: cipher.map(String),
-        auditorEncKey: encryptionKey.map(String),
+        AuditorPublicKey: auditorPublicKey.map(String),
+        AuditorCiphertext: cipher.map(String),
+        AuditorPoseidonAuthKey: authKey.map(String),
+        AuditorPoseidonNonce: nonce.toString(),
+        AuditorPoseidonRandom: encryptionRandom.toString(),
       };
 
-      const proof = await this.proofGenerator.generateProof(
-        ProofType.TRANSFER,
-        input,
-      );
+      const proof = await this.proveFunc(JSON.stringify(input), "TRANSFER");
+      const publicInputs = [
+        ...input.SenderPublicKey,
+        ...input.EncryptedSenderBalanceOld,
+        ...input.EncryptedToBeSubtracted,
+        ...input.EncryptedToBeAdded,
+        ...input.ReceiverPublicKey,
+        ...input.ReceiverEncryptedAmount,
+        ...input.AuditorPublicKey,
+        ...input.AuditorCiphertext,
+        ...input.AuditorPoseidonAuthKey,
+        input.AuditorPoseidonNonce,
+      ];
 
-      return proof;
+      return {
+        ...proof,
+        inputs: publicInputs,
+      } as IProof;
     } catch (e) {
       throw new Error(e as string);
     }

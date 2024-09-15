@@ -1,8 +1,11 @@
-export type IProof = {
+export type IWasmProof = {
   a: string[];
   b: string[][];
   c: string[];
-  input: string[];
+};
+
+export type IProof = IWasmProof & {
+  inputs: string[];
 };
 
 export enum ProofType {

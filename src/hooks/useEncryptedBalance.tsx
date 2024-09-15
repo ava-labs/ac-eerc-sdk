@@ -95,9 +95,9 @@ export function useEncryptedBalance(
 
   // mints amount of encrypted tokens to the user
   const privateMint = useCallback(
-    (amount: bigint) => {
+    (recipient: `0x${string}`, amount: bigint) => {
       if (!eerc || !auditorPublicKey) throw new Error("EERC not initialized");
-      return eerc.privateMint(amount, auditorPublicKey as Point);
+      return eerc.privateMint(recipient, amount, auditorPublicKey as Point);
     },
     [eerc, auditorPublicKey],
   );
