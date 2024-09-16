@@ -267,7 +267,7 @@ export class EERC {
       address: this.contractAddress,
       functionName: "privateMint",
       args: [
-        this.wallet.account.address,
+        recipient,
         {
           a: proof.a,
           b: proof.b,
@@ -812,7 +812,9 @@ export class EERC {
           receiver:
             decoded?.functionName === "transfer"
               ? (decoded?.args?.[0] as `0x${string}`) ?? null
-              : null,
+              : decoded?.functionName === "privateMint"
+                ? (decoded?.args?.[0] as `0x${string}`) ?? null
+                : null,
         });
       }
 
