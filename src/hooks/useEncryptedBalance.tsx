@@ -29,7 +29,7 @@ export function useEncryptedBalance(
   );
 
   // get encrypted balance of the user
-  const { data: contractBalance } = useContractRead({
+  const { data: contractBalance, refetch: refetchBalance } = useContractRead({
     ...eercContract,
     functionName: tokenAddress ? "balanceOfFromAddress" : "balanceOf",
     args: [wallet?.account?.address, tokenAddress || 0n],
@@ -188,5 +188,8 @@ export function useEncryptedBalance(
     privateTransfer,
     withdraw,
     deposit,
+
+    // refetch
+    refetchBalance,
   };
 }

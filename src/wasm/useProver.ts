@@ -41,19 +41,15 @@ export const useProver = ({ url }: useProverProps) => {
           let result;
           switch (proofType) {
             case 'REGISTER':
-              console.log('Calling generateRegisterProof');
               result = generateRegisterProof(funcArgs);
               break;
             case 'MINT':
-              console.log('Calling generateMintProof');
               result = generateMintProof(funcArgs);
               break;
             case 'BURN':
-              console.log('Calling generateBurnProof');
               result = generateBurnProof(funcArgs);
               break;
             case 'TRANSFER':
-              console.log('Calling generateTransferProof');
               result = generateTransferProof(funcArgs);
               break;
             default:

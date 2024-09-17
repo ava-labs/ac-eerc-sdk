@@ -51,7 +51,11 @@ export function useEERC(
   });
 
   // get user data for checking is user registered
-  const { data: userData, isFetched: isUserDataFetched } = useContractRead({
+  const {
+    data: userData,
+    isFetched: isUserDataFetched,
+    refetch: refetchEercUser,
+  } = useContractRead({
     ...eercContract,
     functionName: "getUser",
     args: [wallet?.account?.address],
@@ -83,14 +87,17 @@ export function useEERC(
       ],
     });
 
-  const { data: auditorPublicKeyData, isFetched: isAuditorPublicKeyFetched } =
-    useContractRead({
-      ...eercContract,
-      functionName: "getAuditorPublicKey",
-      args: [],
-      enabled: Boolean(contractAddress),
-      watch: true,
-    });
+  const {
+    data: auditorPublicKeyData,
+    isFetched: isAuditorPublicKeyFetched,
+    refetch: refetchAuditor,
+  } = useContractRead({
+    ...eercContract,
+    functionName: "getAuditorPublicKey",
+    args: [],
+    enabled: Boolean(contractAddress),
+    watch: true,
+  });
 
   // update auditor public key
   useEffect(() => {
@@ -140,55 +147,6 @@ export function useEERC(
       setIsAllDataFetched(false);
     };
   }, [isUserDataFetched, isContractDataFetched, isAuditorPublicKeyFetched]);
-
-  // useEffect(() => {
-  //   if (
-  //     !!client &&
-  //     !!wallet?.account.address &&
-  //     !!contractAddress &&
-  //     isConverter !== undefined &&
-  //     registrarAddress.length &&
-  //     !!tableUrl &&
-  //     !!prove
-  //   ) {
-  //     const _eerc = new EERC(
-  //       client,
-  //       wallet,
-  //       contractAddress as `0x${string}`,
-  //       registrarAddress as `0x${string}`,
-  //       isConverter as boolean,
-  //       tableUrl,
-  //       prove,
-  //       decryptionKey,
-  //     );
-
-  //     _eerc
-  //       .init()
-  //       .then(() => {
-  //         setEERC(_eerc);
-  //         setIsInitialized(true);
-  //       })
-  //       .catch((error) => {
-  //         logMessage(`Failed to initialize EERC: ${error}`);
-  //       });
-  //   }
-
-  //   return () => {
-  //     setEERC(undefined);
-  //     setIsInitialized(false);
-  //   };
-  // }, [
-  //   client,
-  //   wallet,
-  //   contractAddress,
-  //   isConverter,
-  //   registrarAddress,
-  //   decryptionKey,
-  //   tableUrl,
-  //   prove,
-  // ]);
-
-  // should generate the key
 
   useEffect(() => {
     // Check if the required data is ready before initializing
@@ -368,6 +326,10 @@ export function useEERC(
     auditorDecrypt, // auditor decryption
     isAddressRegistered, // function for checking address is registered or not
     generateDecryptionKey, // generate decryption key
+
+    // refetch
+    refetchEercUser,
+    refetchAuditor,
 
     // hooks
     useEncryptedBalance: useEncryptedBalanceHook,

@@ -55,6 +55,8 @@ export type EERCHookResult = {
     tokenAddress?: `0x${string}`,
   ) => ReturnType<typeof useEncryptedBalance>;
   prove: IProveFunction;
+  refetchEercUser: () => void;
+  refetchAuditor: () => void;
 };
 
 export type UseEncryptedBalanceHookResult = {
@@ -70,4 +72,5 @@ export type UseEncryptedBalanceHookResult = {
   privateTransfer: (to: string, amount: bigint) => Promise<OperationResult>;
   withdraw: (amount: bigint) => Promise<OperationResult>;
   deposit: (amount: bigint) => Promise<OperationResult>;
+  refetchBalance: () => void;
 };
