@@ -748,6 +748,39 @@ export class EERC {
     if (!this.decryptionKey) throw new Error("Missing decryption key!");
     const privateKey = formatKeyForCurve(this.decryptionKey);
 
+    const currentAuditor = await this.client.readContract({
+      address: this.contractAddress,
+      abi: this.erc34Abi,
+      functionName: "auditor",
+      args: [],
+    });
+
+    if (
+      (currentAuditor as `0x${string}`).toLowerCase() !==
+      this.wallet.account.address.toLowerCase()
+    ) {
+      throw new Error("Only the auditor can decrypt the transactions");
+    }
+
+    const auditorChangeEvent = {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: true,
+          internalType: "address",
+          name: "oldAuditor",
+          type: "address",
+        },
+        {
+          indexed: true,
+          internalType: "address",
+          name: "newAuditor",
+          type: "address",
+        },
+      ],
+      name: "AuditorChanged",
+    };
+
     type NamedEvents = Log & {
       eventName: string;
       args: { auditorPCT: bigint[] };
@@ -756,14 +789,27 @@ export class EERC {
     const result: DecryptedTransaction[] = [];
 
     try {
-      logMessage("Fetching logs...");
       const currentBlock = await this.client.getBlockNumber();
+
+      const startBlockNumber = (
+        await this.client.getLogs({
+          address: this.contractAddress,
+          event: { ...auditorChangeEvent, type: "event" },
+          fromBlock: "earliest",
+          toBlock: "latest",
+          args: {
+            newAuditor: this.wallet.account.address,
+          },
+        })
+      )[0].blockNumber;
+
+      logMessage("Fetching logs...");
       const events = ERC34_ABI.filter((element) => element.type === "event");
 
       // get last 50 blocks logs
       const logs = (await this.client.getLogs({
         address: this.contractAddress,
-        fromBlock: currentBlock - 10n,
+        fromBlock: startBlockNumber,
         toBlock: currentBlock,
         events,
       })) as NamedEvents[];

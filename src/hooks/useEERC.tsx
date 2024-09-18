@@ -7,7 +7,6 @@ import {
   useContractReads,
 } from "wagmi";
 import { EERC } from "../EERC";
-import type { Point } from "../crypto/types";
 import { logMessage } from "../helpers";
 import { ERC34_ABI } from "../utils";
 import { useProver } from "../wasm";
@@ -208,39 +207,6 @@ export function useEERC(
     return isRegistered && !eerc?.isDecryptionKeySet;
   }, [eerc, isRegistered]);
 
-  // sets auditor public key
-  const setAuditor = useCallback(
-    async (publicKey: Point): Promise<`0x${string}`> => {
-      try {
-        if (!wallet || !contractAddress) {
-          throw new Error("EERC not initialized");
-        }
-        logMessage(`Setting auditor public key: ${publicKey}`);
-        const transactionHash = await wallet?.writeContract({
-          address: contractAddress as `0x${string}`,
-          abi: ERC34_ABI,
-          functionName: "setAuditorPublicKey",
-          args: [publicKey],
-        });
-
-        // update auditor public key
-        setAuditorPublicKey([publicKey[0], publicKey[1]]);
-
-        return transactionHash;
-      } catch (error) {
-        throw new Error(error as string);
-      }
-    },
-    [wallet, contractAddress],
-  );
-
-  // sets auditor public key as user's public key
-  const setMyselfAsAuditor = useCallback(async () => {
-    if (!eerc?.publicKey)
-      throw new Error("EERC not initialized or public key not available");
-    return setAuditor(eerc?.publicKey as Point);
-  }, [eerc?.publicKey, setAuditor]);
-
   // registers the user to the EERC contract
   const register = useCallback(() => {
     if (!eerc) {
@@ -321,8 +287,6 @@ export function useEERC(
 
     // functions
     register, // register user to the contract
-    setAuditor, // set auditor public key
-    setMyselfAsAuditor, // set user's public key as auditor's public key
     auditorDecrypt, // auditor decryption
     isAddressRegistered, // function for checking address is registered or not
     generateDecryptionKey, // generate decryption key

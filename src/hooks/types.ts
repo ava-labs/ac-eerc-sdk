@@ -1,4 +1,3 @@
-import type { Point } from "../crypto/types";
 import type { IWasmProof } from "../helpers";
 import type { useEncryptedBalance } from "./useEncryptedBalance";
 
@@ -45,8 +44,6 @@ export type EERCHookResult = {
   areYouAuditor: boolean;
   generateDecryptionKey: () => Promise<string>;
   register: () => Promise<{ key: string; transactionHash: string }>;
-  setAuditor: (publicKey: Point) => Promise<`0x${string}`>;
-  setMyselfAsAuditor: () => Promise<`0x${string}`>;
   auditorDecrypt: () => Promise<DecryptedTransaction[]>;
   isAddressRegistered: (
     address: `0x${string}`,

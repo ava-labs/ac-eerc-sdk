@@ -150,6 +150,25 @@ export const ERC34_ABI = [
       {
         indexed: true,
         internalType: "address",
+        name: "oldAuditor",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "newAuditor",
+        type: "address",
+      },
+    ],
+    name: "AuditorChanged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
         name: "to",
         type: "address",
       },
@@ -260,6 +279,19 @@ export const ERC34_ABI = [
       },
     ],
     name: "allTokenAddresses",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "auditor",
     outputs: [
       {
         internalType: "address",
@@ -835,9 +867,9 @@ export const ERC34_ABI = [
   {
     inputs: [
       {
-        internalType: "uint256[2]",
-        name: "_auditorPublicKey",
-        type: "uint256[2]",
+        internalType: "address",
+        name: "_auditor",
+        type: "address",
       },
     ],
     name: "setAuditorPublicKey",
