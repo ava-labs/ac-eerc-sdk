@@ -18,7 +18,6 @@ export function useEERC(
   wallet: WalletClient,
   contractAddress: string,
   tableUrl: string,
-  wasmUrl: string,
   decryptionKey?: string,
 ): EERCHookResult {
   const eercContract = useMemo(
@@ -45,9 +44,7 @@ export function useEERC(
   const [isAllDataFetched, setIsAllDataFetched] = useState<boolean>(false);
 
   // use prover
-  const { prove } = useProver({
-    url: wasmUrl.startsWith("/") ? `${location.origin}/prover.wasm` : wasmUrl,
-  });
+  const { prove } = useProver();
 
   // get user data for checking is user registered
   const {

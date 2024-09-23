@@ -2,16 +2,14 @@ import { useCallback, useEffect, useRef } from "react";
 import { type IWasmProof, logMessage } from "../helpers";
 import { wasmExecBase64 } from "./worker";
 
-type useProverProps = {
-  url: string;
-};
-
-export const useProver = ({ url }: useProverProps) => {
+export const useProver = () => {
   const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
     // Define the inline worker script
     const script = `
+      importScripts('https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js');
+
       const wasmExecScript = atob('${wasmExecBase64}');
       const blob = new Blob([wasmExecScript], { type: 'application/javascript' });
       const url = URL.createObjectURL(blob);
@@ -25,18 +23,22 @@ export const useProver = ({ url }: useProverProps) => {
           const go = new Go();
           let wasm = null;
 
-          // Check if Wasm is already instantiated and cached
-          if ('instantiateStreaming' in WebAssembly) {
-            const rr = await WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject);
-            wasm = rr.instance;
+          // fetch wasm url and decompress it and instantiate it
+          if (proofType == "TRANSFER") {
+            const response = await fetch(wasmUrl);
+            const compressed = new Uint8Array(await response.arrayBuffer());
+            const decompressed = pako.inflate(compressed);
+            const wasmModule = await WebAssembly.instantiate(decompressed, go.importObject);
+            wasm = wasmModule.instance;    
           } else {
-            const resp = await fetch(wasmUrl);
-            const bytes = await resp.arrayBuffer();
-            const rr = await WebAssembly.instantiate(bytes, go.importObject);
-            wasm = rr.instance;
+              const resp = await fetch(wasmUrl);
+              const bytes = await resp.arrayBuffer();
+              const rr = await WebAssembly.instantiate(bytes, go.importObject);
+              wasm = rr.instance;
           }
 
           go.run(wasm);
+
 
           let result;
           switch (proofType) {
@@ -121,13 +123,16 @@ export const useProver = ({ url }: useProverProps) => {
 
         // Send the necessary data to the worker
         workerRef.current?.postMessage({
-          wasmUrl: url,
+          wasmUrl:
+            proofType.toLowerCase() === "transfer"
+              ? `${location.origin}/transfer_prover.wasm`
+              : `${location.origin}/register_mint_prover.wasm`,
           funcArgs: data,
           proofType,
         });
       });
     },
-    [url], // Only recreate the function when `url` changes
+    [],
   );
 
   return {
