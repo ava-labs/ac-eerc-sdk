@@ -108,6 +108,12 @@ export const useProver = () => {
           if (event.data.error) {
             reject(new Error(event.data.error));
           } else {
+            // TODO: Parse the response and resolve the promise
+            if (event.data === 0) {
+              reject(new Error("Proof generation failed"));
+              return;
+            }
+
             resolve(JSON.parse(event.data) as IWasmProof);
           }
 
