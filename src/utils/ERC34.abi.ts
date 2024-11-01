@@ -2,39 +2,46 @@ export const ERC34_ABI = [
   {
     inputs: [
       {
-        internalType: "bool",
-        name: "isConverter_",
-        type: "bool",
-      },
-      {
-        internalType: "contract IMintVerifier",
-        name: "mintVerifier_",
-        type: "address",
-      },
-      {
-        internalType: "contract IBurnVerifier",
-        name: "burnVerifier_",
-        type: "address",
-      },
-      {
-        internalType: "contract ITransferVerifier",
-        name: "transferVerifier_",
-        type: "address",
-      },
-      {
-        internalType: "contract IRegistrar",
-        name: "registrar_",
-        type: "address",
-      },
-      {
-        internalType: "string",
-        name: "name_",
-        type: "string",
-      },
-      {
-        internalType: "string",
-        name: "symbol_",
-        type: "string",
+        components: [
+          {
+            internalType: "address",
+            name: "_registrar",
+            type: "address",
+          },
+          {
+            internalType: "bool",
+            name: "_isConverter",
+            type: "bool",
+          },
+          {
+            internalType: "string",
+            name: "_name",
+            type: "string",
+          },
+          {
+            internalType: "string",
+            name: "_symbol",
+            type: "string",
+          },
+          {
+            internalType: "address",
+            name: "_mintVerifier",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "_burnVerifier",
+            type: "address",
+          },
+          {
+            internalType: "address",
+            name: "_transferVerifier",
+            type: "address",
+          },
+        ],
+        internalType: "struct CreateEncryptedERCParams",
+        name: "params",
+        type: "tuple",
       },
     ],
     stateMutability: "nonpayable",
@@ -47,27 +54,12 @@ export const ERC34_ABI = [
   },
   {
     inputs: [],
-    name: "InvalidAuditorKey",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "InvalidContractType",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "InvalidHistory",
+    name: "InvalidOperation",
     type: "error",
   },
   {
     inputs: [],
     name: "InvalidProof",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "InvalidPublicKey",
     type: "error",
   },
   {
@@ -96,16 +88,11 @@ export const ERC34_ABI = [
     inputs: [
       {
         internalType: "uint8",
-        name: "tokenDecimals",
+        name: "decimals",
         type: "uint8",
       },
     ],
     name: "TokenDecimalsTooLow",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "TokenNotFound",
     type: "error",
   },
   {
@@ -115,33 +102,7 @@ export const ERC34_ABI = [
   },
   {
     inputs: [],
-    name: "UserIsIdentity",
-    type: "error",
-  },
-  {
-    inputs: [],
-    name: "UserNotFound",
-    type: "error",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "token",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "recipient",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
-    name: "WithdrawTransferFailed",
+    name: "UserNotRegistered",
     type: "error",
   },
   {
@@ -169,7 +130,7 @@ export const ERC34_ABI = [
       {
         indexed: true,
         internalType: "address",
-        name: "to",
+        name: "user",
         type: "address",
       },
       {
@@ -200,37 +161,6 @@ export const ERC34_ABI = [
       {
         indexed: true,
         internalType: "address",
-        name: "to",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "whole",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "fractional",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "tokenId",
-        type: "uint256",
-      },
-    ],
-    name: "Mint",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
         name: "previousOwner",
         type: "address",
       },
@@ -248,6 +178,31 @@ export const ERC34_ABI = [
     anonymous: false,
     inputs: [
       {
+        indexed: true,
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[7]",
+        name: "auditorPCT",
+        type: "uint256[7]",
+      },
+    ],
+    name: "PrivateBurn",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
         indexed: false,
         internalType: "uint256[7]",
         name: "auditorPCT",
@@ -261,33 +216,26 @@ export const ERC34_ABI = [
     anonymous: false,
     inputs: [
       {
+        indexed: true,
+        internalType: "address",
+        name: "from",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "to",
+        type: "address",
+      },
+      {
         indexed: false,
         internalType: "uint256[7]",
         name: "auditorPCT",
         type: "uint256[7]",
       },
     ],
-    name: "Transfer",
+    name: "PrivateTransfer",
     type: "event",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    name: "allTokenAddresses",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
   },
   {
     inputs: [],
@@ -303,18 +251,17 @@ export const ERC34_ABI = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    inputs: [],
     name: "auditorPublicKey",
     outputs: [
       {
         internalType: "uint256",
-        name: "",
+        name: "X",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "Y",
         type: "uint256",
       },
     ],
@@ -325,7 +272,7 @@ export const ERC34_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_account",
+        name: "_user",
         type: "address",
       },
       {
@@ -342,12 +289,12 @@ export const ERC34_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "x",
+                name: "X",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "y",
+                name: "Y",
                 type: "uint256",
               },
             ],
@@ -359,12 +306,12 @@ export const ERC34_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "x",
+                name: "X",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "y",
+                name: "Y",
                 type: "uint256",
               },
             ],
@@ -373,50 +320,36 @@ export const ERC34_ABI = [
             type: "tuple",
           },
         ],
-        internalType: "struct CipherText",
-        name: "whole",
+        internalType: "struct EGCT",
+        name: "eGCT",
         type: "tuple",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
       },
       {
         components: [
           {
-            components: [
-              {
-                internalType: "uint256",
-                name: "x",
-                type: "uint256",
-              },
-              {
-                internalType: "uint256",
-                name: "y",
-                type: "uint256",
-              },
-            ],
-            internalType: "struct Point",
-            name: "c1",
-            type: "tuple",
+            internalType: "uint256[7]",
+            name: "pct",
+            type: "uint256[7]",
           },
           {
-            components: [
-              {
-                internalType: "uint256",
-                name: "x",
-                type: "uint256",
-              },
-              {
-                internalType: "uint256",
-                name: "y",
-                type: "uint256",
-              },
-            ],
-            internalType: "struct Point",
-            name: "c2",
-            type: "tuple",
+            internalType: "uint256",
+            name: "index",
+            type: "uint256",
           },
         ],
-        internalType: "struct CipherText",
-        name: "fractional",
-        type: "tuple",
+        internalType: "struct AmountPCT[]",
+        name: "amountPCTs",
+        type: "tuple[]",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
       },
     ],
     stateMutability: "view",
@@ -426,16 +359,11 @@ export const ERC34_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_account",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "_tokenAddress",
+        name: "_user",
         type: "address",
       },
     ],
-    name: "balanceOfFromAddress",
+    name: "balanceOfStandalone",
     outputs: [
       {
         components: [
@@ -443,12 +371,12 @@ export const ERC34_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "x",
+                name: "X",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "y",
+                name: "Y",
                 type: "uint256",
               },
             ],
@@ -460,12 +388,12 @@ export const ERC34_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "x",
+                name: "X",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "y",
+                name: "Y",
                 type: "uint256",
               },
             ],
@@ -474,22 +402,68 @@ export const ERC34_ABI = [
             type: "tuple",
           },
         ],
-        internalType: "struct CipherText",
-        name: "whole",
+        internalType: "struct EGCT",
+        name: "eGCT",
         type: "tuple",
       },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            internalType: "uint256[7]",
+            name: "pct",
+            type: "uint256[7]",
+          },
+          {
+            internalType: "uint256",
+            name: "index",
+            type: "uint256",
+          },
+        ],
+        internalType: "struct AmountPCT[]",
+        name: "amountPCTs",
+        type: "tuple[]",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+    ],
+    name: "balances",
+    outputs: [
       {
         components: [
           {
             components: [
               {
                 internalType: "uint256",
-                name: "x",
+                name: "X",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "y",
+                name: "Y",
                 type: "uint256",
               },
             ],
@@ -501,12 +475,12 @@ export const ERC34_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "x",
+                name: "X",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "y",
+                name: "Y",
                 type: "uint256",
               },
             ],
@@ -515,9 +489,19 @@ export const ERC34_ABI = [
             type: "tuple",
           },
         ],
-        internalType: "struct CipherText",
-        name: "fractional",
+        internalType: "struct EGCT",
+        name: "eGCT",
         type: "tuple",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "transactionIndex",
+        type: "uint256",
       },
     ],
     stateMutability: "view",
@@ -561,6 +545,11 @@ export const ERC34_ABI = [
         name: "_tokenAddress",
         type: "address",
       },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
     ],
     name: "deposit",
     outputs: [],
@@ -569,87 +558,12 @@ export const ERC34_ABI = [
   },
   {
     inputs: [],
-    name: "getAllTokenAddresses",
+    name: "getTokens",
     outputs: [
       {
         internalType: "address[]",
         name: "",
         type: "address[]",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getAuditorPublicKey",
-    outputs: [
-      {
-        internalType: "uint256[2]",
-        name: "",
-        type: "uint256[2]",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_account",
-        type: "address",
-      },
-    ],
-    name: "getUser",
-    outputs: [
-      {
-        components: [
-          {
-            components: [
-              {
-                internalType: "uint256",
-                name: "x",
-                type: "uint256",
-              },
-              {
-                internalType: "uint256",
-                name: "y",
-                type: "uint256",
-              },
-            ],
-            internalType: "struct Point",
-            name: "publicKey",
-            type: "tuple",
-          },
-        ],
-        internalType: "struct User",
-        name: "",
-        type: "tuple",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_account",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "_tokenId",
-        type: "uint256",
-      },
-    ],
-    name: "getUserNonce",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
       },
     ],
     stateMutability: "view",
@@ -671,42 +585,6 @@ export const ERC34_ABI = [
   {
     inputs: [],
     name: "isConverter",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_account",
-        type: "address",
-      },
-      {
-        components: [
-          {
-            internalType: "uint256",
-            name: "x",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
-            name: "y",
-            type: "uint256",
-          },
-        ],
-        internalType: "struct Point",
-        name: "_publicKey",
-        type: "tuple",
-      },
-    ],
-    name: "isCorrectPublicKey",
     outputs: [
       {
         internalType: "bool",
@@ -772,31 +650,19 @@ export const ERC34_ABI = [
   {
     inputs: [
       {
-        components: [
-          {
-            internalType: "uint256[2]",
-            name: "a",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[2][2]",
-            name: "b",
-            type: "uint256[2][2]",
-          },
-          {
-            internalType: "uint256[2]",
-            name: "c",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[45]",
-            name: "inputs",
-            type: "uint256[45]",
-          },
-        ],
-        internalType: "struct TransferProof",
-        name: "_proof",
-        type: "tuple",
+        internalType: "uint256[8]",
+        name: "proof",
+        type: "uint256[8]",
+      },
+      {
+        internalType: "uint256[19]",
+        name: "input",
+        type: "uint256[19]",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "_balancePCT",
+        type: "uint256[7]",
       },
     ],
     name: "privateBurn",
@@ -808,35 +674,18 @@ export const ERC34_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_account",
+        name: "_user",
         type: "address",
       },
       {
-        components: [
-          {
-            internalType: "uint256[2]",
-            name: "a",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[2][2]",
-            name: "b",
-            type: "uint256[2][2]",
-          },
-          {
-            internalType: "uint256[2]",
-            name: "c",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[19]",
-            name: "inputs",
-            type: "uint256[19]",
-          },
-        ],
-        internalType: "struct MintProof",
-        name: "_proof",
-        type: "tuple",
+        internalType: "uint256[8]",
+        name: "proof",
+        type: "uint256[8]",
+      },
+      {
+        internalType: "uint256[22]",
+        name: "input",
+        type: "uint256[22]",
       },
     ],
     name: "privateMint",
@@ -868,7 +717,7 @@ export const ERC34_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_auditor",
+        name: "_user",
         type: "address",
       },
     ],
@@ -912,41 +761,48 @@ export const ERC34_ABI = [
   {
     inputs: [
       {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "tokens",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
         internalType: "address",
         name: "_to",
         type: "address",
       },
       {
-        components: [
-          {
-            internalType: "uint256[2]",
-            name: "a",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[2][2]",
-            name: "b",
-            type: "uint256[2][2]",
-          },
-          {
-            internalType: "uint256[2]",
-            name: "c",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[45]",
-            name: "inputs",
-            type: "uint256[45]",
-          },
-        ],
-        internalType: "struct TransferProof",
-        name: "_proof",
-        type: "tuple",
-      },
-      {
         internalType: "uint256",
         name: "_tokenId",
         type: "uint256",
+      },
+      {
+        internalType: "uint256[8]",
+        name: "proof",
+        type: "uint256[8]",
+      },
+      {
+        internalType: "uint256[32]",
+        name: "input",
+        type: "uint256[32]",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "_balancePCT",
+        type: "uint256[7]",
       },
     ],
     name: "transfer",
@@ -982,38 +838,6 @@ export const ERC34_ABI = [
   },
   {
     inputs: [
-      {
-        internalType: "address",
-        name: "_account",
-        type: "address",
-      },
-      {
-        components: [
-          {
-            internalType: "uint256[2]",
-            name: "a",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[2][2]",
-            name: "b",
-            type: "uint256[2][2]",
-          },
-          {
-            internalType: "uint256[2]",
-            name: "c",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[28]",
-            name: "inputs",
-            type: "uint256[28]",
-          },
-        ],
-        internalType: "struct BurnProof",
-        name: "_proof",
-        type: "tuple",
-      },
       {
         internalType: "uint256",
         name: "_tokenId",

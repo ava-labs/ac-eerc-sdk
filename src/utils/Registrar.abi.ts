@@ -2,8 +2,8 @@ export const REGISTRAR_ABI = [
   {
     inputs: [
       {
-        internalType: "contract IRegisterVerifier",
-        name: "_registerVerifier",
+        internalType: "address",
+        name: "_registrationVerifier",
         type: "address",
       },
     ],
@@ -12,54 +12,8 @@ export const REGISTRAR_ABI = [
   },
   {
     inputs: [],
-    name: "DuplicatePublicKey",
+    name: "UserAlreadyRegistered",
     type: "error",
-  },
-  {
-    inputs: [],
-    name: "InvalidProof",
-    type: "error",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "owner",
-        type: "address",
-      },
-    ],
-    name: "OwnableInvalidOwner",
-    type: "error",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
-    ],
-    name: "OwnableUnauthorizedAccount",
-    type: "error",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "previousOwner",
-        type: "address",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "newOwner",
-        type: "address",
-      },
-    ],
-    name: "OwnershipTransferred",
-    type: "event",
   },
   {
     anonymous: false,
@@ -74,12 +28,12 @@ export const REGISTRAR_ABI = [
         components: [
           {
             internalType: "uint256",
-            name: "x",
+            name: "X",
             type: "uint256",
           },
           {
             internalType: "uint256",
-            name: "y",
+            name: "Y",
             type: "uint256",
           },
         ],
@@ -94,86 +48,12 @@ export const REGISTRAR_ABI = [
   },
   {
     inputs: [],
-    name: "burnUser",
+    name: "BURN_USER",
     outputs: [
       {
         internalType: "address",
         name: "",
         type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_account",
-        type: "address",
-      },
-    ],
-    name: "getUser",
-    outputs: [
-      {
-        components: [
-          {
-            components: [
-              {
-                internalType: "uint256",
-                name: "x",
-                type: "uint256",
-              },
-              {
-                internalType: "uint256",
-                name: "y",
-                type: "uint256",
-              },
-            ],
-            internalType: "struct Point",
-            name: "publicKey",
-            type: "tuple",
-          },
-        ],
-        internalType: "struct User",
-        name: "userStruct",
-        type: "tuple",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "_account",
-        type: "address",
-      },
-      {
-        components: [
-          {
-            internalType: "uint256",
-            name: "x",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
-            name: "y",
-            type: "uint256",
-          },
-        ],
-        internalType: "struct Point",
-        name: "_publicKey",
-        type: "tuple",
-      },
-    ],
-    name: "isCorrectPublicKey",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
       },
     ],
     stateMutability: "view",
@@ -187,12 +67,12 @@ export const REGISTRAR_ABI = [
         type: "address",
       },
     ],
-    name: "isUserIdentity",
+    name: "getUserPublicKey",
     outputs: [
       {
-        internalType: "bool",
-        name: "",
-        type: "bool",
+        internalType: "uint256[2]",
+        name: "publicKey",
+        type: "uint256[2]",
       },
     ],
     stateMutability: "view",
@@ -218,46 +98,16 @@ export const REGISTRAR_ABI = [
     type: "function",
   },
   {
-    inputs: [],
-    name: "owner",
-    outputs: [
-      {
-        internalType: "address",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [
       {
-        components: [
-          {
-            internalType: "uint256[2]",
-            name: "a",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[2][2]",
-            name: "b",
-            type: "uint256[2][2]",
-          },
-          {
-            internalType: "uint256[2]",
-            name: "c",
-            type: "uint256[2]",
-          },
-          {
-            internalType: "uint256[2]",
-            name: "inputs",
-            type: "uint256[2]",
-          },
-        ],
-        internalType: "struct RegisterProof",
-        name: "_proof",
-        type: "tuple",
+        internalType: "uint256[8]",
+        name: "proof",
+        type: "uint256[8]",
+      },
+      {
+        internalType: "uint256[2]",
+        name: "input",
+        type: "uint256[2]",
       },
     ],
     name: "register",
@@ -267,10 +117,10 @@ export const REGISTRAR_ABI = [
   },
   {
     inputs: [],
-    name: "registerVerifier",
+    name: "registrationVerifier",
     outputs: [
       {
-        internalType: "contract IRegisterVerifier",
+        internalType: "contract IRegistrationVerifier",
         name: "",
         type: "address",
       },
@@ -279,23 +129,27 @@ export const REGISTRAR_ABI = [
     type: "function",
   },
   {
-    inputs: [],
-    name: "renounceOwnership",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     inputs: [
       {
         internalType: "address",
-        name: "newOwner",
+        name: "userAddress",
         type: "address",
       },
     ],
-    name: "transferOwnership",
-    outputs: [],
-    stateMutability: "nonpayable",
+    name: "userPublicKeys",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "X",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "Y",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
     type: "function",
   },
 ];
