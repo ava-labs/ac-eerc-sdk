@@ -13,7 +13,7 @@ import type {
   IProveFunction,
   OperationResult,
 } from "./hooks/types";
-import { ERC34_ABI, MESSAGES, SNARK_FIELD_SIZE } from "./utils";
+import { ENCRYPTED_ERC_ABI, MESSAGES, SNARK_FIELD_SIZE } from "./utils";
 import { REGISTRAR_ABI } from "./utils/Registrar.abi";
 
 export class EERC {
@@ -29,7 +29,7 @@ export class EERC {
   // contract field
   public contractAddress: `0x${string}`;
   public isConverter: boolean;
-  public erc34Abi = ERC34_ABI;
+  public erc34Abi = ENCRYPTED_ERC_ABI;
 
   public registrarAddress: `0x${string}`;
   public registrarAbi = REGISTRAR_ABI;
@@ -804,7 +804,9 @@ export class EERC {
       )[0].blockNumber;
 
       logMessage("Fetching logs...");
-      const events = ERC34_ABI.filter((element) => element.type === "event");
+      const events = ENCRYPTED_ERC_ABI.filter(
+        (element) => element.type === "event",
+      );
 
       // get last 50 blocks logs
       const logs = (await this.client.getLogs({
@@ -839,7 +841,7 @@ export class EERC {
         });
 
         const decoded = decodeFunctionData({
-          abi: ERC34_ABI,
+          abi: ENCRYPTED_ERC_ABI,
           data: tx.input as `0x${string}`,
         });
 

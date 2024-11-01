@@ -1,4 +1,4 @@
-export const ERC34_ABI = [
+export const ENCRYPTED_ERC_ABI = [
   {
     inputs: [
       {

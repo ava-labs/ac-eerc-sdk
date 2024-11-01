@@ -5,7 +5,7 @@ import { useContractRead } from "wagmi";
 import type { EERC } from "../EERC";
 import { Scalar } from "../crypto/scalar";
 import type { Point } from "../crypto/types";
-import { ERC34_ABI } from "../utils";
+import { ENCRYPTED_ERC_ABI } from "../utils";
 import type { EncryptedBalance, UseEncryptedBalanceHookResult } from "./types";
 
 export function useEncryptedBalance(
@@ -23,7 +23,7 @@ export function useEncryptedBalance(
   const eercContract = useMemo(
     () => ({
       address: contractAddress as `0x${string}`,
-      abi: ERC34_ABI,
+      abi: ENCRYPTED_ERC_ABI,
     }),
     [contractAddress],
   );

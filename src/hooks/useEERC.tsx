@@ -8,7 +8,7 @@ import {
 } from "wagmi";
 import { EERC } from "../EERC";
 import { logMessage } from "../helpers";
-import { ERC34_ABI } from "../utils";
+import { ENCRYPTED_ERC_ABI } from "../utils";
 import { useProver } from "../wasm";
 import type { DecryptedTransaction, EERCHookResult } from "./types";
 import { useEncryptedBalance } from "./useEncryptedBalance";
@@ -24,7 +24,7 @@ export function useEERC(
   const eercContract = useMemo(
     () => ({
       address: contractAddress as `0x${string}`,
-      abi: ERC34_ABI as Abi,
+      abi: ENCRYPTED_ERC_ABI as Abi,
     }),
     [contractAddress],
   );
