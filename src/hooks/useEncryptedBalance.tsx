@@ -73,25 +73,25 @@ export function useEncryptedBalance(
     setEncryptedBalance(parsedBalance);
   }, [contractBalance, encryptedBalance]);
 
-  // if encrypted balance is changed or not decrypted yet
-  useAsync(async () => {
-    if (!encryptedBalance.length || !eerc) return;
+  // // if encrypted balance is changed or not decrypted yet
+  // useAsync(async () => {
+  //   if (!encryptedBalance.length || !eerc) return;
 
-    try {
-      // decrypt the encrypted balance
-      const decBalance = await eerc.decryptContractBalance(encryptedBalance);
-      if (!decBalance) {
-        setDecryptedBalance([]);
-        setParsedDecryptedBalance("");
-        return;
-      }
+  //   try {
+  //     // decrypt the encrypted balance
+  //     const decBalance = await eerc.decryptContractBalance(encryptedBalance);
+  //     if (!decBalance) {
+  //       setDecryptedBalance([]);
+  //       setParsedDecryptedBalance("");
+  //       return;
+  //     }
 
-      setDecryptedBalance(decBalance);
-      setParsedDecryptedBalance(Scalar.parseEERCBalance(decBalance));
-    } catch {
-      throw new Error("Failed to decrypt balance");
-    }
-  }, [encryptedBalance, eerc]);
+  //     setDecryptedBalance(decBalance);
+  //     setParsedDecryptedBalance(Scalar.parseEERCBalance(decBalance));
+  //   } catch {
+  //     throw new Error("Failed to decrypt balance");
+  //   }
+  // }, [encryptedBalance, eerc]);
 
   // mints amount of encrypted tokens to the user
   const privateMint = useCallback(
