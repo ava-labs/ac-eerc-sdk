@@ -7,8 +7,10 @@ import {
   useContractReads,
 } from "wagmi";
 import { EERC } from "../EERC";
+import type { Point } from "../crypto/types";
 import { logMessage } from "../helpers";
 import { ERC34_ABI } from "../utils";
+import { REGISTRAR_ABI } from "../utils/Registrar.abi";
 import { useProver } from "../wasm";
 import type { DecryptedTransaction, EERCHookResult } from "./types";
 import { useEncryptedBalance } from "./useEncryptedBalance";
@@ -21,14 +23,6 @@ export function useEERC(
   wasmUrl: string,
   decryptionKey?: string,
 ): EERCHookResult {
-  const eercContract = useMemo(
-    () => ({
-      address: contractAddress as `0x${string}`,
-      abi: ERC34_ABI as Abi,
-    }),
-    [contractAddress],
-  );
-
   const [eerc, setEERC] = useState<EERC>();
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [isConverter, setIsConverter] = useState<boolean>(false);
@@ -46,8 +40,24 @@ export function useEERC(
 
   // use prover
   const { prove } = useProver({
-    url: wasmUrl.startsWith("/") ? `${location.origin}/prover.wasm` : wasmUrl,
+    url: wasmUrl.startsWith("/") ? `${location.origin}/${wasmUrl}` : wasmUrl,
   });
+
+  const eercContract = useMemo(
+    () => ({
+      address: contractAddress as `0x${string}`,
+      abi: ERC34_ABI as Abi,
+    }),
+    [contractAddress],
+  );
+
+  const registrarContract = useMemo(
+    () => ({
+      address: registrarAddress as `0x${string}`,
+      abi: REGISTRAR_ABI as Abi,
+    }),
+    [registrarAddress],
+  );
 
   // get user data for checking is user registered
   const {
@@ -55,10 +65,10 @@ export function useEERC(
     isFetched: isUserDataFetched,
     refetch: refetchEercUser,
   } = useContractRead({
-    ...eercContract,
-    functionName: "getUser",
+    ...registrarContract,
+    functionName: "getUserPublicKey",
     args: [wallet?.account?.address],
-    enabled: Boolean(eerc && wallet?.account?.address),
+    enabled: Boolean(eerc && wallet?.account?.address && registrarContract),
   });
 
   // get contract data
@@ -92,7 +102,7 @@ export function useEERC(
     refetch: refetchAuditor,
   } = useContractRead({
     ...eercContract,
-    functionName: "getAuditorPublicKey",
+    functionName: "auditorPublicKey",
     args: [],
     enabled: Boolean(contractAddress),
     watch: true,
@@ -101,7 +111,8 @@ export function useEERC(
   // update auditor public key
   useEffect(() => {
     if (auditorPublicKeyData && isAuditorPublicKeyFetched) {
-      setAuditorPublicKey(auditorPublicKeyData as bigint[]);
+      const p = auditorPublicKeyData as { X: bigint; Y: bigint };
+      setAuditorPublicKey([p.X, p.Y] as bigint[]);
     }
   }, [auditorPublicKeyData, isAuditorPublicKeyFetched]);
 
@@ -126,8 +137,8 @@ export function useEERC(
   // update user registration status
   useEffect(() => {
     if (userData && isUserDataFetched) {
-      const { publicKey } = userData as { publicKey: { x: bigint; y: bigint } };
-      setIsRegistered(!(publicKey.x === 0n && publicKey.y === 0n));
+      const data = userData as Point;
+      setIsRegistered(!(data[0] === 0n && data[1] === 0n));
     }
   }, [userData, isUserDataFetched]);
 
@@ -199,11 +210,11 @@ export function useEERC(
     prove,
     isInitialized,
   ]);
+
   const shouldGenerateDecryptionKey = useMemo(() => {
     if (!eerc) {
       return false;
     }
-
     return isRegistered && !eerc?.isDecryptionKeySet;
   }, [eerc, isRegistered]);
 
@@ -235,21 +246,18 @@ export function useEERC(
   const isAddressRegistered = useCallback(
     async (address: `0x${string}`) => {
       try {
-        const { publicKey } = (await client.readContract({
-          ...eercContract,
-          functionName: "getUser",
-          args: [address],
-        })) as { publicKey: { x: bigint; y: bigint } };
+        const data = await eerc?.fetchPublicKey(address);
+        if (!data) return { isRegistered: false, error: null };
 
         return {
-          isRegistered: !(publicKey.x === 0n || publicKey.y === 0n),
+          isRegistered: !(data[0] === 0n || data[1] === 0n),
           error: null,
         };
       } catch {
         throw new Error("Failed to check address registration");
       }
     },
-    [client, eercContract],
+    [eerc],
   );
 
   // returns the encrypted balance hook

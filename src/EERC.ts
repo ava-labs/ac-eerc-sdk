@@ -13,8 +13,7 @@ import type {
   IProveFunction,
   OperationResult,
 } from "./hooks/types";
-import { ERC34_ABI, MESSAGES, SNARK_FIELD_SIZE } from "./utils";
-import { REGISTRAR_ABI } from "./utils/Registrar.abi";
+import { ERC34_ABI, MESSAGES, REGISTRAR_ABI, SNARK_FIELD_SIZE } from "./utils";
 
 export class EERC {
   private client: PublicClient;
@@ -139,14 +138,11 @@ export class EERC {
       };
 
       const check = async () => {
-        const { publicKey } = (await this.client.readContract({
-          address: this.contractAddress,
-          abi: this.erc34Abi,
-          functionName: "getUser",
-          args: [this.wallet.account.address],
-        })) as { publicKey: { x: bigint; y: bigint } };
+        const publicKey = await this.fetchPublicKey(
+          this.wallet.account.address,
+        );
 
-        if (publicKey.x !== 0n && publicKey.y !== 0n) return true;
+        if (publicKey[0] !== 0n && publicKey[1] !== 0n) return true;
         return false;
       };
 
@@ -672,20 +668,14 @@ export class EERC {
       return this.BURN_USER.publicKey as Point;
     }
 
-    const data = await this.client.readContract({
-      address: this.contractAddress,
-      abi: this.erc34Abi,
-      functionName: "getUser",
+    const publicKey = (await this.client.readContract({
+      address: this.registrarAddress as `0x${string}`,
+      abi: this.registrarAbi,
+      functionName: "getUserPublicKey",
       args: [to],
-    });
-    const { publicKey } = data as { publicKey: { x: bigint; y: bigint } };
+    })) as Point;
 
-    if (!publicKey) throw new Error("User not registered!");
-
-    if (publicKey.x === this.field.zero || publicKey.y === this.field.zero)
-      throw new Error("User not registered!");
-
-    return [publicKey.x, publicKey.y];
+    return publicKey as Point;
   }
 
   // fetches users approval from erc20 token

@@ -6,7 +6,7 @@ import type { EERC } from "../EERC";
 import { Scalar } from "../crypto/scalar";
 import type { Point } from "../crypto/types";
 import { ERC34_ABI } from "../utils";
-import type { EncryptedBalance, UseEncryptedBalanceHookResult } from "./types";
+import type { UseEncryptedBalanceHookResult } from "./types";
 
 export function useEncryptedBalance(
   eerc: EERC | undefined,
@@ -16,7 +16,7 @@ export function useEncryptedBalance(
 ): UseEncryptedBalanceHookResult {
   const [auditorPublicKey, setAuditorPublicKey] = useState<bigint[]>([]);
   const [decryptedBalance, setDecryptedBalance] = useState<bigint[]>([]);
-  const [encryptedBalance, setEncryptedBalance] = useState<bigint[]>([]);
+  const [encryptedBalance] = useState<bigint[]>([]);
   const [parsedDecryptedBalance, setParsedDecryptedBalance] =
     useState<string>("");
 
@@ -40,38 +40,40 @@ export function useEncryptedBalance(
   // fetch auditor public key
   const { data: auditorData } = useContractRead({
     ...eercContract,
-    functionName: "getAuditorPublicKey",
+    functionName: "auditorPublicKey",
     args: [],
     watch: true,
   });
 
   useEffect(() => {
     if (!auditorData) return;
-    setAuditorPublicKey(auditorData as bigint[]);
+    const p = auditorData as { X: bigint; Y: bigint };
+    setAuditorPublicKey([p.X, p.Y] as bigint[]);
   }, [auditorData]);
 
   useEffect(() => {
-    // parses the encrypted balance
-    const parseContractBalance = (b: EncryptedBalance) =>
-      b.flatMap((point) => [point.c1.x, point.c1.y, point.c2.x, point.c2.y]);
+    console.log("contractBalance", contractBalance);
+    // // parses the encrypted balance
+    // const parseContractBalance = (b: EncryptedBalance) =>
+    //   b.flatMap((point) => [point.c1.x, point.c1.y, point.c2.x, point.c2.y]);
 
-    if (!contractBalance) return;
+    // if (!contractBalance) return;
 
-    // if contract balance that we fetched is equal to encrypted balance no need to decrypt
-    const parsedBalance = parseContractBalance(
-      contractBalance as EncryptedBalance,
-    );
+    // // if contract balance that we fetched is equal to encrypted balance no need to decrypt
+    // const parsedBalance = parseContractBalance(
+    //   contractBalance as EncryptedBalance,
+    // );
 
-    if (parsedBalance.every((v) => v === 0n)) return;
+    // if (parsedBalance.every((v) => v === 0n)) return;
 
-    // if encrypted balance is not empty
-    if (encryptedBalance) {
-      // if the encrypted balance is the same as the contract balance no need to decrypt
-      if (parsedBalance.every((v, i) => v === encryptedBalance[i])) return;
-    }
+    // // if encrypted balance is not empty
+    // if (encryptedBalance) {
+    //   // if the encrypted balance is the same as the contract balance no need to decrypt
+    //   if (parsedBalance.every((v, i) => v === encryptedBalance[i])) return;
+    // }
 
-    setEncryptedBalance(parsedBalance);
-  }, [contractBalance, encryptedBalance]);
+    // setEncryptedBalance(parsedBalance);
+  }, [contractBalance]);
 
   // if encrypted balance is changed or not decrypted yet
   useAsync(async () => {
