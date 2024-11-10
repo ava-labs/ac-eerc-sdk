@@ -6,14 +6,19 @@ import { FF } from "./crypto/ff";
 import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
 import { Poseidon } from "./crypto/poseidon";
 import { Scalar } from "./crypto/scalar";
-import type { Point } from "./crypto/types";
-import { type IProof, type IWasmProof, logMessage } from "./helpers";
+import type { AmountPCT, EGCT, Point } from "./crypto/types";
+import { type IProof, logMessage } from "./helpers";
 import type {
   DecryptedTransaction,
   IProveFunction,
   OperationResult,
 } from "./hooks/types";
-import { ERC34_ABI, MESSAGES, REGISTRAR_ABI, SNARK_FIELD_SIZE } from "./utils";
+import {
+  ENCRYPTED_ERC_ABI,
+  MESSAGES,
+  REGISTRAR_ABI,
+  SNARK_FIELD_SIZE,
+} from "./utils";
 
 export class EERC {
   private client: PublicClient;
@@ -28,7 +33,7 @@ export class EERC {
   // contract field
   public contractAddress: `0x${string}`;
   public isConverter: boolean;
-  public erc34Abi = ERC34_ABI;
+  public encryptedErcAbi = ENCRYPTED_ERC_ABI;
 
   public registrarAddress: `0x${string}`;
   public registrarAbi = REGISTRAR_ABI;
@@ -40,8 +45,8 @@ export class EERC {
   // prove func
   public proveFunc: (
     data: string,
-    proofType: "REGISTER" | "MINT" | "BURN" | "TRANSFER",
-  ) => Promise<IWasmProof>;
+    proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+  ) => Promise<IProof>;
 
   // burn user is used for private burn transactions
   // instead of burning tokens, they are transferred to the burn user
@@ -86,6 +91,17 @@ export class EERC {
     } catch (e) {
       throw new Error(e as string);
     }
+  }
+
+  public async setContractAuditorPublicKey(address: `0x${string}`) {
+    const transactionHash = await this.wallet.writeContract({
+      abi: this.encryptedErcAbi,
+      address: this.contractAddress,
+      functionName: "setAuditorPublicKey",
+      args: [address],
+    });
+
+    return { transactionHash };
   }
 
   public get isDecryptionKeySet() {
@@ -133,8 +149,8 @@ export class EERC {
       const publicKey = this.curve.generatePublicKey(formatted);
 
       const input = {
-        PrivateKey: String(formatted),
-        PublicKey: publicKey.map(String),
+        privateInputs: [String(formatted)],
+        publicInputs: publicKey.map(String),
       };
 
       const check = async () => {
@@ -159,15 +175,17 @@ export class EERC {
       }
 
       // generate proof for the transaction
-      const proof = await this.proveFunc(JSON.stringify(input), "REGISTER");
-      const publicInputs = publicKey.map(String);
+      const { proof, publicInputs } = await this.proveFunc(
+        JSON.stringify(input),
+        "REGISTER",
+      );
 
       logMessage("Sending transaction");
       const transactionHash = await this.wallet.writeContract({
         abi: this.registrarAbi,
         address: this.registrarAddress,
         functionName: "register",
-        args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: publicInputs }],
+        args: [proof, publicInputs],
       });
 
       this.decryptionKey = key;
@@ -188,89 +206,72 @@ export class EERC {
   //         50 = 0.50
   async privateMint(
     recipient: `0x${string}`,
-    totalMintAmount: bigint,
+    mintAmount: bigint,
     auditorPublicKey: Point,
   ): Promise<OperationResult> {
     if (this.isConverter) throw new Error("Not allowed for converter!");
-    if (
-      !this.wallet ||
-      !this.client ||
-      !this.contractAddress ||
-      !this.decryptionKey
-    )
-      throw new Error(
-        "Missing client, wallet, contract address or decryption key!",
-      );
-
     logMessage("Minting encrypted tokens");
 
     // fetch the receiver public key
     const receiverPublicKey = await this.fetchPublicKey(recipient);
 
-    // encrypt the total mint amount
-    const { whole: wholeEncrypted, fractional: fractionalEncrypted } =
-      await this.curve.encryptAmount(
-        totalMintAmount,
-        receiverPublicKey as Point,
-      );
+    // 1. encrypt the total mint amount
+    const { cipher: encryptedAmount, random: encryptedAmountRandom } =
+      await this.curve.encryptMessage(receiverPublicKey, mintAmount);
 
-    const { cipher, nonce, encryptionRandom, authKey } =
-      await this.poseidon.processPoseidonEncryption({
-        inputs: [
-          wholeEncrypted.originalValue,
-          fractionalEncrypted.originalValue,
-        ],
-        publicKey: auditorPublicKey as Point,
-      });
+    // 2. create pct for the receiver with the mint amount
+    const {
+      cipher: receiverCiphertext,
+      nonce: receiverPoseidonNonce,
+      authKey: receiverAuthKey,
+      encryptionRandom: receiverEncryptionRandom,
+    } = await this.poseidon.processPoseidonEncryption({
+      inputs: [mintAmount],
+      publicKey: receiverPublicKey as Point,
+    });
 
-    const input = {
-      PublicKey: receiverPublicKey.map(String),
-      MintAmountWhole: wholeEncrypted.originalValue.toString(),
-      MintAmountFractional: fractionalEncrypted.originalValue.toString(),
-      MintAmountWholeEncrypted: [
-        ...wholeEncrypted.cipher.c1.map(String),
-        ...wholeEncrypted.cipher.c2.map(String),
-      ],
-      MintAmountFractionalEncrypted: [
-        ...fractionalEncrypted.cipher.c1.map(String),
-        ...fractionalEncrypted.cipher.c2.map(String),
-      ],
-      MintAmountRandomness: [
-        wholeEncrypted.random,
-        fractionalEncrypted.random,
-      ].map(String),
-      AuditorPublicKey: auditorPublicKey.map(String),
-      AuditorCiphertext: cipher.map(String),
-      AuditorPoseidonAuthKey: authKey.map(String),
-      AuditorPoseidonNonce: nonce.toString(),
-      AuditorPoseidonRandom: encryptionRandom.toString(),
-    };
+    // 3. create pct for the auditor with the mint amount
+    const {
+      cipher: auditorCiphertext,
+      nonce: auditorPoseidonNonce,
+      authKey: auditorAuthKey,
+      encryptionRandom: auditorEncryptionRandom,
+    } = await this.poseidon.processPoseidonEncryption({
+      inputs: [mintAmount],
+      publicKey: auditorPublicKey as Point,
+    });
 
-    const proof = await this.proveFunc(JSON.stringify(input), "MINT");
     const publicInputs = [
-      ...input.PublicKey,
-      ...input.MintAmountWholeEncrypted,
-      ...input.MintAmountFractionalEncrypted,
-      ...input.AuditorPublicKey,
-      ...input.AuditorCiphertext,
-      ...input.AuditorPoseidonAuthKey,
-      input.AuditorPoseidonNonce,
-    ];
+      ...receiverPublicKey,
+      ...encryptedAmount.c1,
+      ...encryptedAmount.c2,
+      ...receiverCiphertext,
+      ...receiverAuthKey,
+      receiverPoseidonNonce,
+      ...auditorPublicKey,
+      ...auditorCiphertext,
+      ...auditorAuthKey,
+      auditorPoseidonNonce,
+    ].map(String);
+
+    const privateInputs = [
+      encryptedAmountRandom,
+      receiverEncryptionRandom,
+      auditorEncryptionRandom,
+      mintAmount,
+    ].map(String);
+
+    const { proof } = await this.proveFunc(
+      JSON.stringify({ privateInputs, publicInputs }),
+      "MINT",
+    );
 
     // write the transaction to the contract
     const transactionHash = await this.wallet.writeContract({
-      abi: this.erc34Abi,
+      abi: this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "privateMint",
-      args: [
-        recipient,
-        {
-          a: proof.a,
-          b: proof.b,
-          c: proof.c,
-          inputs: publicInputs,
-        },
-      ],
+      args: [recipient, proof, publicInputs],
     });
 
     return { transactionHash };
@@ -281,7 +282,7 @@ export class EERC {
   async privateBurn(
     totalAmount: bigint,
     encryptedBalance: bigint[],
-    decryptedBalance: bigint[],
+    decryptedBalance: bigint,
     auditorPublicKey: bigint[],
   ) {
     if (this.isConverter) throw new Error("Not allowed for converter!");
@@ -300,16 +301,17 @@ export class EERC {
       this.BURN_USER.address,
       totalAmount,
       encryptedBalance,
-      decryptedBalance,
+      [decryptedBalance, decryptedBalance],
       auditorPublicKey,
     );
+    console.log(proof);
 
     logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
-      abi: this.erc34Abi,
+      abi: this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "privateBurn",
-      args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: proof.inputs }],
+      // args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: proof.inputs }],
     });
 
     return { transactionHash };
@@ -319,7 +321,7 @@ export class EERC {
     to: string,
     totalAmount: bigint,
     encryptedBalance: bigint[],
-    decryptedBalance: bigint[],
+    decryptedBalance: bigint,
     auditorPublicKey: bigint[],
     tokenId = 0n,
   ): Promise<OperationResult> {
@@ -338,18 +340,19 @@ export class EERC {
       to,
       totalAmount,
       encryptedBalance,
-      decryptedBalance,
+      [decryptedBalance, decryptedBalance],
       auditorPublicKey,
     );
+    console.log(proof);
 
     logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
-      abi: this.erc34Abi,
+      abi: this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "transfer",
       args: [
         to,
-        { a: proof.a, b: proof.b, c: proof.c, inputs: proof.inputs },
+        // { a: proof.a, b: proof.b, c: proof.c, inputs: proof.inputs },
         tokenId,
       ],
     });
@@ -363,7 +366,7 @@ export class EERC {
     auditorPublicKey: bigint[],
     tokenAddress: string,
     encryptedBalance: bigint[],
-    decryptedBalance: bigint[],
+    decryptedBalance: bigint,
   ): Promise<OperationResult> {
     if (
       !this.wallet ||
@@ -419,7 +422,7 @@ export class EERC {
 
     logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
-      abi: this.erc34Abi,
+      abi: this.encryptedErcAbi,
       address: this.contractAddress as `0x${string}`,
       functionName: "deposit",
       args: [amount, tokenAddress],
@@ -517,22 +520,23 @@ export class EERC {
 
       const proof = (await this.proveFunc(
         JSON.stringify(input),
-        "BURN",
+        "WITHDRAW",
       )) as IProof;
+      console.log(proof);
 
       logMessage("Sending transaction");
       const transactionHash = await this.wallet.writeContract({
-        abi: this.erc34Abi,
+        abi: this.encryptedErcAbi,
         address: this.contractAddress,
         functionName: "withdraw",
         args: [
           this.wallet.account.address,
-          {
-            a: proof.a,
-            b: proof.b,
-            c: proof.c,
-            inputs: proof.inputs,
-          },
+          // {
+          //   a: proof.a,
+          //   b: proof.b,
+          //   c: proof.c,
+          //   inputs: proof.inputs,
+          // },
           tokenId,
         ],
       });
@@ -661,9 +665,6 @@ export class EERC {
 
   // fetches the user public key from the contract
   async fetchPublicKey(to: string): Promise<Point> {
-    if (!this.wallet || !this.client || !this.contractAddress)
-      throw new Error("Missing client, wallet or contract address!");
-
     if (to === this.BURN_USER.address) {
       return this.BURN_USER.publicKey as Point;
     }
@@ -693,13 +694,83 @@ export class EERC {
   // returns the token id from token address
   async tokenId(tokenAddress: string) {
     const data = await this.client.readContract({
-      abi: this.erc34Abi,
+      abi: this.encryptedErcAbi,
       address: this.contractAddress as `0x${string}`,
       functionName: "tokenIds",
       args: [tokenAddress as `0x${string}`],
     });
 
     return data as bigint;
+  }
+
+  calculateTotalBalance(
+    eGCT: EGCT,
+    amountPCTs: AmountPCT[],
+    balancePCT: bigint[],
+  ) {
+    const privateKey = formatKeyForCurve(this.decryptionKey);
+    let totalBalance = 0n;
+
+    if (balancePCT.some((e) => e !== 0n)) {
+      const decryptedBalancePCT = this.decryptPCT(balancePCT);
+      totalBalance += decryptedBalancePCT;
+    }
+
+    for (let i = 0; i < amountPCTs.length; i++) {
+      const amountPCT = amountPCTs[i];
+      console.log("amountPCT", amountPCT);
+
+      const decryptedPCT = this.decryptPCT(amountPCT.pct);
+      console.log("decryptedPCT", decryptedPCT);
+
+      totalBalance += decryptedPCT;
+    }
+
+    if (totalBalance !== 0n) {
+      console.log("eGCT", eGCT);
+
+      const decryptedEGCT = this.curve.elGamalDecryption(privateKey, {
+        c1: [eGCT.c1.X, eGCT.c1.Y],
+        c2: [eGCT.c2.X, eGCT.c2.Y],
+      });
+      console.log("decryptedEGCT", decryptedEGCT);
+
+      const expectedPoint = this.curve.mulWithScalar(
+        this.curve.Base8,
+        totalBalance,
+      );
+
+      console.log("expectedPoint", expectedPoint);
+      console.log("totalBalance", totalBalance);
+
+      if (
+        decryptedEGCT[0] !== expectedPoint[0] ||
+        decryptedEGCT[1] !== expectedPoint[1]
+      ) {
+        return -1n;
+      }
+    }
+
+    return totalBalance;
+  }
+
+  decryptPCT(pct: bigint[]) {
+    const privateKey = formatKeyForCurve(this.decryptionKey);
+
+    const cipher = pct.slice(0, 4) as bigint[];
+    const authKey = pct.slice(4, 6) as Point;
+    const nonce = pct[6] as bigint;
+    const length = 1;
+
+    const [amount] = this.poseidon.processPoseidonDecryption({
+      privateKey,
+      authKey,
+      cipher,
+      nonce,
+      length,
+    });
+
+    return amount;
   }
 
   // decrypts user balance from the contract
@@ -740,7 +811,7 @@ export class EERC {
 
     const currentAuditor = await this.client.readContract({
       address: this.contractAddress,
-      abi: this.erc34Abi,
+      abi: this.encryptedErcAbi,
       functionName: "auditor",
       args: [],
     });
@@ -794,7 +865,9 @@ export class EERC {
       )[0].blockNumber;
 
       logMessage("Fetching logs...");
-      const events = ERC34_ABI.filter((element) => element.type === "event");
+      const events = ENCRYPTED_ERC_ABI.filter(
+        (element) => element.type === "event",
+      );
 
       // get last 50 blocks logs
       const logs = (await this.client.getLogs({
@@ -829,7 +902,7 @@ export class EERC {
         });
 
         const decoded = decodeFunctionData({
-          abi: ERC34_ABI,
+          abi: ENCRYPTED_ERC_ABI,
           data: tx.input as `0x${string}`,
         });
 

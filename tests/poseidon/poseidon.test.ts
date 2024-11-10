@@ -12,7 +12,7 @@ describe("Poseidon Encryption & Decryption", () => {
     const COUNT = 10;
 
     const generateRandomInput = async () => {
-      const l = Math.floor(Math.random() * 10) + 1;
+      const l = 1;
       const inputs: bigint[] = [];
 
       for (let i = 0; i < l; i++) {

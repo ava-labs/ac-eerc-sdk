@@ -1,3 +1,3 @@
 export * from "./constants";
-export * from "./ERC34.abi";
+export * from "./ENCRYPTED_ERC.abi";
 export * from "./Registrar.abi";

@@ -136,6 +136,13 @@ export class BabyJub {
     };
   }
 
+  async encryptMessage(
+    publicKey: Point,
+    message: bigint,
+  ): Promise<{ cipher: ElGamalCipherText; random: bigint }> {
+    return this.elGamalEncryptionWithScalar(publicKey, message);
+  }
+
   // encrypts the array of bigint value
   async encryptArray(
     values: bigint[],

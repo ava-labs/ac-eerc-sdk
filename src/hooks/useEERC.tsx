@@ -9,7 +9,7 @@ import {
 import { EERC } from "../EERC";
 import type { Point } from "../crypto/types";
 import { logMessage } from "../helpers";
-import { ERC34_ABI } from "../utils";
+import { ENCRYPTED_ERC_ABI } from "../utils";
 import { REGISTRAR_ABI } from "../utils/Registrar.abi";
 import { useProver } from "../wasm";
 import type { DecryptedTransaction, EERCHookResult } from "./types";
@@ -46,7 +46,7 @@ export function useEERC(
   const eercContract = useMemo(
     () => ({
       address: contractAddress as `0x${string}`,
-      abi: ERC34_ABI as Abi,
+      abi: ENCRYPTED_ERC_ABI as Abi,
     }),
     [contractAddress],
   );
@@ -69,6 +69,7 @@ export function useEERC(
     functionName: "getUserPublicKey",
     args: [wallet?.account?.address],
     enabled: Boolean(eerc && wallet?.account?.address && registrarContract),
+    watch: true,
   });
 
   // get contract data
@@ -111,8 +112,9 @@ export function useEERC(
   // update auditor public key
   useEffect(() => {
     if (auditorPublicKeyData && isAuditorPublicKeyFetched) {
-      const p = auditorPublicKeyData as { X: bigint; Y: bigint };
-      setAuditorPublicKey([p.X, p.Y] as bigint[]);
+      console.log("auditorPublicKeyData", auditorPublicKeyData);
+
+      setAuditorPublicKey(auditorPublicKeyData as bigint[]);
     }
   }, [auditorPublicKeyData, isAuditorPublicKeyFetched]);
 
@@ -276,6 +278,14 @@ export function useEERC(
     );
   }, [eerc, auditorPublicKey]);
 
+  const setContractAuditorPublicKey = useCallback(
+    (address: `0x${string}`) => {
+      if (!eerc) throw new Error("EERC not initialized");
+      return eerc.setContractAuditorPublicKey(address);
+    },
+    [eerc],
+  );
+
   return {
     isInitialized, // is sdk initialized
     isAllDataFetched, // is all data fetched
@@ -298,6 +308,7 @@ export function useEERC(
     auditorDecrypt, // auditor decryption
     isAddressRegistered, // function for checking address is registered or not
     generateDecryptionKey, // generate decryption key
+    setContractAuditorPublicKey, // set contract auditor public key
 
     // refetch
     refetchEercUser,

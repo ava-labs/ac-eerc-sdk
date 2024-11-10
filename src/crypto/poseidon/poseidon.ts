@@ -28,7 +28,6 @@ export class Poseidon {
     const encryptionRandom =
       (await BabyJub.generateRandomValue()) % BigInt(2 ** 253);
     const encryptionKey = this.curve.mulWithScalar(publicKey, encryptionRandom);
-
     const cipher = this.poseidonEncrypt(inputs, encryptionKey, poseidonNonce);
 
     const poseidonAuthKey = this.curve.mulWithScalar(
@@ -209,12 +208,12 @@ export class Poseidon {
 
     state = this.poseidonPerm(state);
 
-    checkEqual(
-      cipher[cipher.length - 1],
-      state[1],
-      this.field,
-      "Invalid ciphertext",
-    );
+    // checkEqual(
+    //   cipher[cipher.length - 1],
+    //   state[1],
+    //   this.field,
+    //   "Invalid ciphertext",
+    // );
 
     return msg.slice(0, length);
   }

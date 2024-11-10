@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { type IWasmProof, logMessage } from "../helpers";
+import { type IProof, logMessage } from "../helpers";
 import { wasmExecBase64 } from "./worker";
 
 type useProverProps = {
@@ -38,23 +38,7 @@ export const useProver = ({ url }: useProverProps) => {
 
           go.run(wasm);
 
-          let result;
-          switch (proofType) {
-            case 'REGISTER':
-              result = generateRegisterProof(funcArgs);
-              break;
-            case 'MINT':
-              result = generateMintProof(funcArgs);
-              break;
-            case 'BURN':
-              result = generateBurnProof(funcArgs);
-              break;
-            case 'TRANSFER':
-              result = generateTransferProof(funcArgs);
-              break;
-            default:
-              throw new Error('Invalid proof type');
-          }
+          const result = generateProof(proofType, funcArgs);
 
           self.postMessage(result);
         } catch (error) {
@@ -86,8 +70,8 @@ export const useProver = ({ url }: useProverProps) => {
   const prove = useCallback(
     async (
       data: string,
-      proofType: "REGISTER" | "MINT" | "BURN" | "TRANSFER",
-    ): Promise<IWasmProof> => {
+      proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+    ): Promise<IProof> => {
       if (!workerRef.current) {
         throw new Error("Worker not initialized");
       }
@@ -106,7 +90,7 @@ export const useProver = ({ url }: useProverProps) => {
           if (event.data.error) {
             reject(new Error(event.data.error));
           } else {
-            resolve(JSON.parse(event.data) as IWasmProof);
+            resolve(JSON.parse(event.data) as IProof);
           }
 
           // Remove the event listener after the message is received

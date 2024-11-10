@@ -1,4 +1,4 @@
-export const ERC34_ABI = [
+export const ENCRYPTED_ERC_ABI = [
   {
     inputs: [
       {
@@ -35,7 +35,7 @@ export const ERC34_ABI = [
           },
           {
             internalType: "address",
-            name: "_burnVerifier",
+            name: "_withdrawVerifier",
             type: "address",
           },
           {
@@ -87,6 +87,11 @@ export const ERC34_ABI = [
       },
     ],
     name: "OwnableUnauthorizedAccount",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "UnknownToken",
     type: "error",
   },
   {
@@ -178,6 +183,12 @@ export const ERC34_ABI = [
         name: "auditorPCT",
         type: "uint256[7]",
       },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "auditorAddress",
+        type: "address",
+      },
     ],
     name: "PrivateBurn",
     type: "event",
@@ -196,6 +207,12 @@ export const ERC34_ABI = [
         internalType: "uint256[7]",
         name: "auditorPCT",
         type: "uint256[7]",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "auditorAddress",
+        type: "address",
       },
     ],
     name: "PrivateMint",
@@ -222,8 +239,39 @@ export const ERC34_ABI = [
         name: "auditorPCT",
         type: "uint256[7]",
       },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "auditorAddress",
+        type: "address",
+      },
     ],
     name: "PrivateTransfer",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+    ],
+    name: "Withdraw",
     type: "event",
   },
   {
@@ -508,19 +556,6 @@ export const ERC34_ABI = [
   },
   {
     inputs: [],
-    name: "burnVerifier",
-    outputs: [
-      {
-        internalType: "contract IBurnVerifier",
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
     name: "decimals",
     outputs: [
       {
@@ -654,9 +689,9 @@ export const ERC34_ABI = [
         type: "uint256[8]",
       },
       {
-        internalType: "uint256[19]",
+        internalType: "uint256[32]",
         name: "input",
-        type: "uint256[19]",
+        type: "uint256[32]",
       },
       {
         internalType: "uint256[7]",
@@ -733,6 +768,25 @@ export const ERC34_ABI = [
         internalType: "string",
         name: "",
         type: "string",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+    ],
+    name: "tokenAddresses",
+    outputs: [
+      {
+        internalType: "address",
+        name: "tokenAddress",
+        type: "address",
       },
     ],
     stateMutability: "view",
@@ -839,13 +893,46 @@ export const ERC34_ABI = [
     inputs: [
       {
         internalType: "uint256",
+        name: "_amount",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
         name: "_tokenId",
         type: "uint256",
+      },
+      {
+        internalType: "uint256[8]",
+        name: "proof",
+        type: "uint256[8]",
+      },
+      {
+        internalType: "uint256[20]",
+        name: "input",
+        type: "uint256[20]",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "_balancePCT",
+        type: "uint256[7]",
       },
     ],
     name: "withdraw",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "withdrawVerifier",
+    outputs: [
+      {
+        internalType: "contract IWithdrawVerifier",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
     type: "function",
   },
 ];

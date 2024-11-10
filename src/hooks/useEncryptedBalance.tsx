@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAsync } from "react-use";
 import type { WalletClient } from "viem";
 import { useContractRead } from "wagmi";
 import type { EERC } from "../EERC";
-import { Scalar } from "../crypto/scalar";
-import type { Point } from "../crypto/types";
-import { ERC34_ABI } from "../utils";
+import type { AmountPCT, EGCT, Point } from "../crypto/types";
+import { ENCRYPTED_ERC_ABI } from "../utils";
 import type { UseEncryptedBalanceHookResult } from "./types";
 
 export function useEncryptedBalance(
@@ -15,7 +13,7 @@ export function useEncryptedBalance(
   tokenAddress?: `0x${string}`,
 ): UseEncryptedBalanceHookResult {
   const [auditorPublicKey, setAuditorPublicKey] = useState<bigint[]>([]);
-  const [decryptedBalance, setDecryptedBalance] = useState<bigint[]>([]);
+  const [decryptedBalance, setDecryptedBalance] = useState<bigint>(0n);
   const [encryptedBalance] = useState<bigint[]>([]);
   const [parsedDecryptedBalance, setParsedDecryptedBalance] =
     useState<string>("");
@@ -23,7 +21,7 @@ export function useEncryptedBalance(
   const eercContract = useMemo(
     () => ({
       address: contractAddress as `0x${string}`,
-      abi: ERC34_ABI,
+      abi: ENCRYPTED_ERC_ABI,
     }),
     [contractAddress],
   );
@@ -47,53 +45,22 @@ export function useEncryptedBalance(
 
   useEffect(() => {
     if (!auditorData) return;
-    const p = auditorData as { X: bigint; Y: bigint };
-    setAuditorPublicKey([p.X, p.Y] as bigint[]);
+    setAuditorPublicKey(auditorData as bigint[]);
   }, [auditorData]);
 
   useEffect(() => {
-    console.log("contractBalance", contractBalance);
-    // // parses the encrypted balance
-    // const parseContractBalance = (b: EncryptedBalance) =>
-    //   b.flatMap((point) => [point.c1.x, point.c1.y, point.c2.x, point.c2.y]);
+    if (!contractBalance || !eerc) return;
+    const contractBalance_ = contractBalance as bigint[];
 
-    // if (!contractBalance) return;
+    const totalBalance = eerc.calculateTotalBalance(
+      contractBalance_[0] as unknown as EGCT,
+      contractBalance_[2] as unknown as AmountPCT[],
+      contractBalance_[3] as unknown as bigint[],
+    );
 
-    // // if contract balance that we fetched is equal to encrypted balance no need to decrypt
-    // const parsedBalance = parseContractBalance(
-    //   contractBalance as EncryptedBalance,
-    // );
-
-    // if (parsedBalance.every((v) => v === 0n)) return;
-
-    // // if encrypted balance is not empty
-    // if (encryptedBalance) {
-    //   // if the encrypted balance is the same as the contract balance no need to decrypt
-    //   if (parsedBalance.every((v, i) => v === encryptedBalance[i])) return;
-    // }
-
-    // setEncryptedBalance(parsedBalance);
-  }, [contractBalance]);
-
-  // if encrypted balance is changed or not decrypted yet
-  useAsync(async () => {
-    if (!encryptedBalance.length || !eerc) return;
-
-    try {
-      // decrypt the encrypted balance
-      const decBalance = await eerc.decryptContractBalance(encryptedBalance);
-      if (!decBalance) {
-        setDecryptedBalance([]);
-        setParsedDecryptedBalance("");
-        return;
-      }
-
-      setDecryptedBalance(decBalance);
-      setParsedDecryptedBalance(Scalar.parseEERCBalance(decBalance));
-    } catch {
-      throw new Error("Failed to decrypt balance");
-    }
-  }, [encryptedBalance, eerc]);
+    setDecryptedBalance(totalBalance);
+    setParsedDecryptedBalance(totalBalance.toString());
+  }, [contractBalance, eerc]);
 
   // mints amount of encrypted tokens to the user
   const privateMint = useCallback(
@@ -107,12 +74,7 @@ export function useEncryptedBalance(
   // burns amount of encrypted tokens from the user
   const privateBurn = useCallback(
     (amount: bigint) => {
-      if (
-        !eerc ||
-        !auditorPublicKey ||
-        !encryptedBalance.length ||
-        !decryptedBalance.length
-      )
+      if (!eerc || !auditorPublicKey || !encryptedBalance.length)
         throw new Error("EERC not initialized");
 
       return eerc.privateBurn(
@@ -128,12 +90,7 @@ export function useEncryptedBalance(
   // transfers amount of encrypted tokens to the user
   const privateTransfer = useCallback(
     (to: string, amount: bigint) => {
-      if (
-        !eerc ||
-        !auditorPublicKey ||
-        !encryptedBalance.length ||
-        !decryptedBalance.length
-      )
+      if (!eerc || !auditorPublicKey || !encryptedBalance.length)
         throw new Error("EERC not initialized");
 
       return tokenAddress
@@ -171,7 +128,7 @@ export function useEncryptedBalance(
       return eerc.withdraw(
         amount,
         encryptedBalance,
-        decryptedBalance,
+        [decryptedBalance, decryptedBalance],
         tokenAddress,
       );
     },
