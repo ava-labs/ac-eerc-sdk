@@ -112,8 +112,6 @@ export function useEERC(
   // update auditor public key
   useEffect(() => {
     if (auditorPublicKeyData && isAuditorPublicKeyFetched) {
-      console.log("auditorPublicKeyData", auditorPublicKeyData);
-
       setAuditorPublicKey(auditorPublicKeyData as bigint[]);
     }
   }, [auditorPublicKeyData, isAuditorPublicKeyFetched]);

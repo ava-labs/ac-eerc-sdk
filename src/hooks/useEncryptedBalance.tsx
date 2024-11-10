@@ -14,9 +14,10 @@ export function useEncryptedBalance(
 ): UseEncryptedBalanceHookResult {
   const [auditorPublicKey, setAuditorPublicKey] = useState<bigint[]>([]);
   const [decryptedBalance, setDecryptedBalance] = useState<bigint>(0n);
-  const [encryptedBalance] = useState<bigint[]>([]);
+  const [encryptedBalance, setEncryptedBalance] = useState<bigint[]>([]);
   const [parsedDecryptedBalance, setParsedDecryptedBalance] =
     useState<string>("");
+  const [decimals, setDecimals] = useState<bigint>(0n);
 
   const eercContract = useMemo(
     () => ({
@@ -35,6 +36,19 @@ export function useEncryptedBalance(
     watch: true,
   });
 
+  // fetch decimals
+  const { data: decimalsData } = useContractRead({
+    ...eercContract,
+    functionName: "decimals",
+    enabled: !!contractAddress,
+  });
+
+  useEffect(() => {
+    console.log("decimalsData", decimalsData);
+    if (!decimalsData) return;
+    setDecimals(decimalsData as bigint);
+  }, [decimalsData]);
+
   // fetch auditor public key
   const { data: auditorData } = useContractRead({
     ...eercContract,
@@ -51,15 +65,22 @@ export function useEncryptedBalance(
   useEffect(() => {
     if (!contractBalance || !eerc) return;
     const contractBalance_ = contractBalance as bigint[];
+    const elGamalCipherText = contractBalance_[0] as unknown as EGCT;
 
     const totalBalance = eerc.calculateTotalBalance(
-      contractBalance_[0] as unknown as EGCT,
+      elGamalCipherText,
       contractBalance_[2] as unknown as AmountPCT[],
       contractBalance_[3] as unknown as bigint[],
     );
 
     setDecryptedBalance(totalBalance);
     setParsedDecryptedBalance(totalBalance.toString());
+    setEncryptedBalance([
+      elGamalCipherText.c1.X,
+      elGamalCipherText.c1.Y,
+      elGamalCipherText.c2.X,
+      elGamalCipherText.c2.Y,
+    ]);
   }, [contractBalance, eerc]);
 
   // mints amount of encrypted tokens to the user
@@ -140,6 +161,7 @@ export function useEncryptedBalance(
     parsedDecryptedBalance, // parsed decrypted balance of the user
     encryptedBalance, // encrypted balance of the user
     auditorPublicKey, // auditor's public key
+    decimals, // decimals of the token
 
     // functions
     privateMint,

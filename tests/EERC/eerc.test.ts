@@ -577,30 +577,4 @@ describe("EERC", () => {
       });
     });
   });
-
-  describe("decrypt contract balance", () => {
-    const cipher = Array.from({ length: 8 }, () => 10n);
-
-    test("if decryption key is missing should return empty array with zeros", async () => {
-      const mockEERC = new EERC(
-        mockPublicClient,
-        mockWalletClient,
-        contractAddress,
-        registrarAddress,
-        false,
-        "",
-      );
-
-      console.error = jest.fn();
-
-      const result = await mockEERC.decryptContractBalance(cipher);
-      expect(result).toEqual([0n, 0n]);
-    });
-
-    test("if cipher array is not 8 length should throw an error", async () => {
-      await expect(eerc.decryptContractBalance([1n, 2n])).rejects.toThrow(
-        "Invalid cipher length!",
-      );
-    });
-  });
 });

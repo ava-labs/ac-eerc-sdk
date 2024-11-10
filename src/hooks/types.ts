@@ -64,6 +64,7 @@ export type UseEncryptedBalanceHookResult = {
   parsedDecryptedBalance: string;
   encryptedBalance: bigint[];
   auditorPublicKey: bigint[];
+  decimals: bigint;
   privateMint: (
     recipient: `0x${string}`,
     amount: bigint,

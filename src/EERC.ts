@@ -280,38 +280,30 @@ export class EERC {
   // function for burning encrypted tokens privately
   // private burn is equals to private transfer to the burn user (ONLY FOR STANDALONE VERSION)
   async privateBurn(
-    totalAmount: bigint,
+    amount: bigint,
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
   ) {
     if (this.isConverter) throw new Error("Not allowed for converter!");
-    if (
-      !this.wallet ||
-      !this.client ||
-      !this.contractAddress ||
-      !this.decryptionKey
-    )
-      throw new Error(
-        "Missing client, wallet, contract address or decryption key!",
+    logMessage("Burning encrypted tokens");
+
+    const { proof, senderBalancePCT, publicInputs } =
+      await this.generateTransferProof(
+        this.BURN_USER.address,
+        amount,
+        encryptedBalance,
+        decryptedBalance,
+        auditorPublicKey,
       );
 
-    logMessage("Burning encrypted tokens");
-    const proof = await this.generateTransferProof(
-      this.BURN_USER.address,
-      totalAmount,
-      encryptedBalance,
-      [decryptedBalance, decryptedBalance],
-      auditorPublicKey,
-    );
-    console.log(proof);
-
     logMessage("Sending transaction");
+
     const transactionHash = await this.wallet.writeContract({
       abi: this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "privateBurn",
-      // args: [{ a: proof.a, b: proof.b, c: proof.c, inputs: proof.inputs }],
+      args: [proof, publicInputs, senderBalancePCT],
     });
 
     return { transactionHash };
@@ -319,42 +311,28 @@ export class EERC {
 
   async transfer(
     to: string,
-    totalAmount: bigint,
+    amount: bigint,
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
     tokenId = 0n,
   ): Promise<OperationResult> {
-    if (
-      !this.wallet ||
-      !this.client ||
-      !this.contractAddress ||
-      !this.decryptionKey
-    )
-      throw new Error(
-        "Missing client, wallet, contract address or decryption key!",
-      );
-
     logMessage("Transferring encrypted tokens");
-    const proof = await this.generateTransferProof(
-      to,
-      totalAmount,
-      encryptedBalance,
-      [decryptedBalance, decryptedBalance],
-      auditorPublicKey,
-    );
-    console.log(proof);
+    const { proof, publicInputs, senderBalancePCT } =
+      await this.generateTransferProof(
+        to,
+        amount,
+        encryptedBalance,
+        decryptedBalance,
+        auditorPublicKey,
+      );
 
     logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
       abi: this.encryptedErcAbi,
       address: this.contractAddress,
       functionName: "transfer",
-      args: [
-        to,
-        // { a: proof.a, b: proof.b, c: proof.c, inputs: proof.inputs },
-        tokenId,
-      ],
+      args: [to, tokenId, proof, publicInputs, senderBalancePCT],
     });
 
     return { transactionHash };
@@ -368,16 +346,6 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
   ): Promise<OperationResult> {
-    if (
-      !this.wallet ||
-      !this.client ||
-      !this.contractAddress ||
-      !this.decryptionKey
-    )
-      throw new Error(
-        "Missing client, wallet, contract address or decryption key!",
-      );
-
     try {
       const tokenId = await this.tokenId(tokenAddress as string);
 
@@ -398,15 +366,6 @@ export class EERC {
 
   // function to deposit tokens to the contract
   async deposit(amount: bigint, tokenAddress: string) {
-    if (
-      !this.wallet ||
-      !this.client ||
-      !this.contractAddress ||
-      !this.decryptionKey
-    )
-      throw new Error(
-        "Missing client, wallet, contract address or decryption key!",
-      );
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
 
     logMessage("Depositing tokens to the contract");
@@ -438,16 +397,6 @@ export class EERC {
     decryptedBalance: bigint[],
     tokenAddress: string,
   ): Promise<OperationResult> {
-    if (
-      !this.wallet ||
-      !this.client ||
-      !this.contractAddress ||
-      !this.decryptionKey
-    )
-      throw new Error(
-        "Missing client, wallet, contract address or decryption key!",
-      );
-
     // only work if eerc is converter
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
 
@@ -518,10 +467,7 @@ export class EERC {
         a2_float_c2: toBeAddedEncrypted.cipher[1]?.c2.map(String),
       };
 
-      const proof = (await this.proveFunc(
-        JSON.stringify(input),
-        "WITHDRAW",
-      )) as IProof;
+      const proof = await this.proveFunc(JSON.stringify(input), "WITHDRAW");
       console.log(proof);
 
       logMessage("Sending transaction");
@@ -552,112 +498,100 @@ export class EERC {
     to: string,
     amount: bigint,
     encryptedBalance: bigint[],
-    decryptedBalance: bigint[],
+    decryptedBalance: bigint,
     auditorPublicKey: bigint[],
-  ) {
+  ): Promise<IProof & { senderBalancePCT: string[] }> {
     try {
       if (!isAddress(to)) throw new Error("Invalid receiver address!");
       const privateKey = formatKeyForCurve(this.decryptionKey);
-
       const receiverPublicKey = await this.fetchPublicKey(to);
-      const [transferWhole, transferFractional] = Scalar.recalculate(amount);
+      const senderNewBalance = decryptedBalance - amount;
+      if (senderNewBalance < 0n) throw new Error("Insufficient balance!");
 
-      const senderTotalBalance = Scalar.calculate(
-        decryptedBalance?.[0] as bigint,
-        decryptedBalance?.[1] as bigint,
-      );
-
-      if (amount > senderTotalBalance) throw new Error("Insufficient balance!");
-      const [toBeSubtracted, toBeAdded] = Scalar.decide(
-        decryptedBalance?.[0] as bigint,
-        decryptedBalance?.[1] as bigint,
-        transferWhole,
-        transferFractional,
-      );
-
-      const senderNewBalance = senderTotalBalance - amount;
-      const [newWhole, newFractional] = Scalar.recalculate(senderNewBalance);
-
-      const toBeSubtractedEncrypted = await this.curve.encryptArray(
-        toBeSubtracted,
+      // 1. encrypt the transfer amount for sender
+      const { cipher: encryptedAmountSender } = await this.curve.encryptMessage(
         this.publicKey as Point,
-      );
-      const toBeAddedEncrypted = await this.curve.encryptArray(
-        toBeAdded,
-        this.publicKey as Point,
+        amount,
       );
 
-      // encrypts for receiver
-      const { whole: wholeReceiver, fractional: fractionalReceiver } =
-        await this.curve.encryptAmount(amount, receiverPublicKey);
+      // 2. encrypt the transfer amount for receiver
+      const {
+        cipher: encryptedAmountReceiver,
+        random: encryptedAmountReceiverRandom,
+      } = await this.curve.encryptMessage(receiverPublicKey as Point, amount);
 
-      const { cipher, nonce, encryptionRandom, authKey } =
-        await this.poseidon.processPoseidonEncryption({
-          inputs: [transferWhole, transferFractional],
-          publicKey: auditorPublicKey as Point,
-        });
+      // 3. creates a pct for receiver with the transfer amount
+      const {
+        cipher: receiverCipherText,
+        nonce: receiverPoseidonNonce,
+        authKey: receiverAuthKey,
+        encryptionRandom: receiverEncryptionRandom,
+      } = await this.poseidon.processPoseidonEncryption({
+        inputs: [amount],
+        publicKey: receiverPublicKey as Point,
+      });
 
-      const input = {
-        SenderPrivateKey: privateKey.toString(),
-        SenderPublicKey: this.publicKey.map(String),
-        SenderWholeBalanceOld: decryptedBalance[0]?.toString(),
-        SenderFractionalBalanceOld: decryptedBalance[1]?.toString(),
-        SenderBalanceOld: senderTotalBalance.toString(),
-        TransferAmountWhole: transferWhole.toString(),
-        TransferAmountFractional: transferFractional.toString(),
-        SenderWholeBalanceNew: newWhole.toString(),
-        SenderFractionalBalanceNew: newFractional.toString(),
-        EncryptedSenderBalanceOld: encryptedBalance.map(String),
-        ToBeSubtracted: toBeSubtracted.map(String),
-        ToBeAdded: toBeAdded.map(String),
-        EncryptedToBeSubtracted: [
-          ...toBeSubtractedEncrypted.cipher[0].c1.map(String),
-          ...toBeSubtractedEncrypted.cipher[0].c2.map(String),
-          ...toBeSubtractedEncrypted.cipher[1].c1.map(String),
-          ...toBeSubtractedEncrypted.cipher[1].c2.map(String),
-        ],
-        EncryptedToBeAdded: [
-          ...toBeAddedEncrypted.cipher[0].c1.map(String),
-          ...toBeAddedEncrypted.cipher[0].c2.map(String),
-          ...toBeAddedEncrypted.cipher[1].c1.map(String),
-          ...toBeAddedEncrypted.cipher[1].c2.map(String),
-        ],
-        ReceiverPublicKey: receiverPublicKey.map(String),
-        ReceiverEncryptedAmount: [
-          ...wholeReceiver.cipher.c1.map(String),
-          ...wholeReceiver.cipher.c2.map(String),
-          ...fractionalReceiver.cipher.c1.map(String),
-          ...fractionalReceiver.cipher.c2.map(String),
-        ],
-        ReceiverAmtRandom: [
-          wholeReceiver.random,
-          fractionalReceiver.random,
-        ].map(String),
-        AuditorPublicKey: auditorPublicKey.map(String),
-        AuditorCiphertext: cipher.map(String),
-        AuditorPoseidonAuthKey: authKey.map(String),
-        AuditorPoseidonNonce: nonce.toString(),
-        AuditorPoseidonRandom: encryptionRandom.toString(),
-      };
+      // 4. creates a pct for auditor with the transfer amount
+      const {
+        cipher: auditorCipherText,
+        nonce: auditorPoseidonNonce,
+        authKey: auditorAuthKey,
+        encryptionRandom: auditorEncryptionRandom,
+      } = await this.poseidon.processPoseidonEncryption({
+        inputs: [amount],
+        publicKey: auditorPublicKey as Point,
+      });
 
-      const proof = await this.proveFunc(JSON.stringify(input), "TRANSFER");
+      // 5. create pct for the sender with the new balance
+      const {
+        cipher: senderCipherText,
+        nonce: senderPoseidonNonce,
+        authKey: senderAuthKey,
+      } = await this.poseidon.processPoseidonEncryption({
+        inputs: [senderNewBalance],
+        publicKey: this.publicKey as Point,
+      });
+
       const publicInputs = [
-        ...input.SenderPublicKey,
-        ...input.EncryptedSenderBalanceOld,
-        ...input.EncryptedToBeSubtracted,
-        ...input.EncryptedToBeAdded,
-        ...input.ReceiverPublicKey,
-        ...input.ReceiverEncryptedAmount,
-        ...input.AuditorPublicKey,
-        ...input.AuditorCiphertext,
-        ...input.AuditorPoseidonAuthKey,
-        input.AuditorPoseidonNonce,
-      ];
+        ...this.publicKey,
+        ...encryptedBalance,
+        ...encryptedAmountSender.c1,
+        ...encryptedAmountSender.c2,
+        ...receiverPublicKey,
+        ...encryptedAmountReceiver.c1,
+        ...encryptedAmountReceiver.c2,
+        ...receiverCipherText,
+        ...receiverAuthKey,
+        receiverPoseidonNonce,
+        ...auditorPublicKey,
+        ...auditorCipherText,
+        ...auditorAuthKey,
+        auditorPoseidonNonce,
+      ].map(String);
+
+      const privateInputs = [
+        privateKey,
+        decryptedBalance,
+        encryptedAmountReceiverRandom,
+        receiverEncryptionRandom,
+        auditorEncryptionRandom,
+        amount,
+      ].map(String);
+
+      const { proof } = await this.proveFunc(
+        JSON.stringify({ privateInputs, publicInputs }),
+        "TRANSFER",
+      );
 
       return {
-        ...proof,
-        inputs: publicInputs,
-      } as IProof;
+        proof,
+        publicInputs,
+        senderBalancePCT: [
+          ...senderCipherText,
+          ...senderAuthKey,
+          senderPoseidonNonce,
+        ].map(String),
+      };
     } catch (e) {
       throw new Error(e as string);
     }
@@ -718,30 +652,19 @@ export class EERC {
 
     for (let i = 0; i < amountPCTs.length; i++) {
       const amountPCT = amountPCTs[i];
-      console.log("amountPCT", amountPCT);
-
       const decryptedPCT = this.decryptPCT(amountPCT.pct);
-      console.log("decryptedPCT", decryptedPCT);
-
       totalBalance += decryptedPCT;
     }
 
     if (totalBalance !== 0n) {
-      console.log("eGCT", eGCT);
-
       const decryptedEGCT = this.curve.elGamalDecryption(privateKey, {
         c1: [eGCT.c1.X, eGCT.c1.Y],
         c2: [eGCT.c2.X, eGCT.c2.Y],
       });
-      console.log("decryptedEGCT", decryptedEGCT);
-
       const expectedPoint = this.curve.mulWithScalar(
         this.curve.Base8,
         totalBalance,
       );
-
-      console.log("expectedPoint", expectedPoint);
-      console.log("totalBalance", totalBalance);
 
       if (
         decryptedEGCT[0] !== expectedPoint[0] ||
@@ -771,36 +694,6 @@ export class EERC {
     });
 
     return amount;
-  }
-
-  // decrypts user balance from the contract
-  async decryptContractBalance(cipher: bigint[]): Promise<[bigint, bigint]> {
-    if (!this.decryptionKey) {
-      console.error("Missing decryption key!");
-      return [0n, 0n];
-    }
-
-    if (cipher.length !== 8) throw new Error("Invalid cipher length!");
-
-    const privateKey = formatKeyForCurve(this.decryptionKey);
-
-    // decrypts the balance using the decryption key
-    const wholePoint = this.curve.elGamalDecryption(privateKey, {
-      c1: [cipher[0], cipher[1]] as Point,
-      c2: [cipher[2], cipher[3]] as Point,
-    });
-    const fractionalPoint = this.curve.elGamalDecryption(privateKey, {
-      c1: [cipher[4], cipher[5]] as Point,
-      c2: [cipher[6], cipher[7]] as Point,
-    });
-
-    // doing bsgs
-    const [whole, fractional] = await Promise.all([
-      this.bsgs.find(wholePoint),
-      this.bsgs.find(fractionalPoint),
-    ]);
-
-    return [whole, fractional];
   }
 
   // decrypts the PCT of the transactions
