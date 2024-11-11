@@ -27,7 +27,9 @@ export function useEncryptedBalance(
     [contractAddress],
   );
 
-  // get encrypted balance of the user
+  /**
+   * fetch contract balance of the user
+   */
   const { data: contractBalance, refetch: refetchBalance } = useContractRead({
     ...eercContract,
     functionName: tokenAddress ? "balanceOfFromAddress" : "balanceOf",
@@ -36,7 +38,9 @@ export function useEncryptedBalance(
     watch: true,
   });
 
-  // fetch decimals
+  /**
+   * fetch decimals of the eERC token
+   */
   const { data: decimalsData } = useContractRead({
     ...eercContract,
     functionName: "decimals",
@@ -48,7 +52,9 @@ export function useEncryptedBalance(
     setDecimals(decimalsData as bigint);
   }, [decimalsData]);
 
-  // fetch auditor public key
+  /**
+   * fetch auditor public key
+   */
   const { data: auditorData } = useContractRead({
     ...eercContract,
     functionName: "auditorPublicKey",
@@ -82,7 +88,12 @@ export function useEncryptedBalance(
     ]);
   }, [contractBalance, eerc]);
 
-  // mints amount of encrypted tokens to the user
+  /**
+   * mint amount of encrypted tokens to the user
+   * @param recipient - recipient address
+   * @param amount - amount to mint
+   * @returns object - returns transaction hash
+   */
   const privateMint = useCallback(
     (recipient: `0x${string}`, amount: bigint) => {
       if (!eerc || !auditorPublicKey) throw new Error("EERC not initialized");
@@ -91,7 +102,11 @@ export function useEncryptedBalance(
     [eerc, auditorPublicKey],
   );
 
-  // burns amount of encrypted tokens from the user
+  /**
+   * burns amount of encrypted tokens from the user
+   * @param amount - amount to burn
+   * @returns object - returns transaction hash
+   */
   const privateBurn = useCallback(
     (amount: bigint) => {
       if (!eerc || !auditorPublicKey || !encryptedBalance.length)
@@ -107,7 +122,12 @@ export function useEncryptedBalance(
     [eerc, auditorPublicKey, encryptedBalance, decryptedBalance],
   );
 
-  // transfers amount of encrypted tokens to the user
+  /**
+   * transfers amount of encrypted tokens to the user
+   * @param to - recipient address
+   * @param amount - amount to transfer
+   * @returns object - returns transaction hash
+   */
   const privateTransfer = useCallback(
     (to: string, amount: bigint) => {
       if (!eerc || !auditorPublicKey || !encryptedBalance.length)
@@ -125,6 +145,11 @@ export function useEncryptedBalance(
     [eerc, auditorPublicKey, encryptedBalance, decryptedBalance, tokenAddress],
   );
 
+  /**
+   * deposit amount of tokens to the user
+   * @param amount - amount to deposit
+   * @returns object - returns transaction hash
+   */
   const deposit = useCallback(
     (amount: bigint) => {
       if (!eerc || !tokenAddress) throw new Error("EERC not initialized");
@@ -133,6 +158,11 @@ export function useEncryptedBalance(
     [eerc, tokenAddress],
   );
 
+  /**
+   * withdraw amount of tokens from the user
+   * @param amount - amount to withdraw
+   * @returns object - returns transaction hash
+   */
   const withdraw = useCallback(
     (amount: bigint) => {
       if (!eerc || !tokenAddress) throw new Error("EERC not initialized");
