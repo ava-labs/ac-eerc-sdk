@@ -7,3 +7,10 @@ export const MESSAGES = {
   REGISTER: (user: string, chainId: number) =>
     `AvaCloud\nRegistering user with\n Address:${user.toLowerCase()}\nChain ID: ${chainId.toString()}`,
 };
+
+// burn user is used for private burn transactions
+// instead of burning tokens, they are transferred to the burn user in the standalone version
+export const BURN_USER = {
+  address: "0x1111111111111111111111111111111111111111",
+  publicKey: [0n, 1n],
+};

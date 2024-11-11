@@ -14,6 +14,7 @@ import type {
   OperationResult,
 } from "./hooks/types";
 import {
+  BURN_USER,
   ENCRYPTED_ERC_ABI,
   MESSAGES,
   REGISTRAR_ABI,
@@ -45,13 +46,6 @@ export class EERC {
     proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
   ) => Promise<IProof>;
 
-  // burn user is used for private burn transactions
-  // instead of burning tokens, they are transferred to the burn user in the standalone version
-  public BURN_USER = {
-    address: "0x1111111111111111111111111111111111111111",
-    publicKey: [0n, 1n],
-  };
-
   constructor(
     client: PublicClient,
     wallet: WalletClient,
@@ -81,12 +75,39 @@ export class EERC {
     }
   }
 
+  /**
+   * throws an error with EERCError class
+   * @param message error message
+   */
+  private throwError(message: string) {
+    throw new Error(message);
+  }
+
+  /**
+   * checks that provided address is a valid address
+   * @param address address to validate
+   */
+  private validateAddress(address: string) {
+    if (!isAddress(address)) throw new Error("Invalid address!");
+  }
+
+  /**
+   * checks that amount is greater than 0 and if sender balance is provided, checks that amount is less than sender balance
+   * @param amount amount
+   * @param senderBalance sender balance - optional
+   */
+  private validateAmount(amount: bigint, senderBalance?: bigint) {
+    if (amount <= 0n) throw new Error("Invalid amount!");
+    if (senderBalance && amount > senderBalance)
+      throw new Error("Insufficient balance!");
+  }
+
   async init() {
     try {
       await this.bsgs.initialize();
       logMessage("EERC initialized successfully!");
-    } catch (e) {
-      throw new Error(e as string);
+    } catch {
+      this.throwError("Failed to initialize EERC!");
     }
   }
 
@@ -96,14 +117,18 @@ export class EERC {
    * @returns transaction hash
    */
   public async setContractAuditorPublicKey(address: `0x${string}`) {
-    const transactionHash = await this.wallet.writeContract({
-      abi: this.encryptedErcAbi,
-      address: this.contractAddress,
-      functionName: "setAuditorPublicKey",
-      args: [address],
-    });
+    try {
+      const transactionHash = await this.wallet.writeContract({
+        abi: this.encryptedErcAbi,
+        address: this.contractAddress,
+        functionName: "setAuditorPublicKey",
+        args: [address],
+      });
 
-    return { transactionHash };
+      return { transactionHash };
+    } catch {
+      throw new Error("Failed to set auditor public key!");
+    }
   }
 
   /**
@@ -118,7 +143,7 @@ export class EERC {
    */
   public async generateDecryptionKey() {
     if (!this.wallet || !this.client) {
-      throw new Error("Missing wallet or client!");
+      this.throwError("Missing wallet or client!");
     }
 
     try {
@@ -170,7 +195,7 @@ export class EERC {
 
         // if user already registered return the key
         if (contractPublicKey[0] !== 0n && contractPublicKey[1] !== 0n) {
-          this.decryptionKey = key;
+          this.decryptionKey = key as string;
           this.publicKey = publicKey;
           return {
             key,
@@ -216,6 +241,8 @@ export class EERC {
     auditorPublicKey: Point,
   ): Promise<OperationResult> {
     if (this.isConverter) throw new Error("Not allowed for converter!");
+    this.validateAddress(recipient);
+    this.validateAmount(mintAmount);
     logMessage("Minting encrypted tokens");
 
     // fetch the receiver public key
@@ -300,11 +327,12 @@ export class EERC {
     auditorPublicKey: bigint[],
   ) {
     if (this.isConverter) throw new Error("Not allowed for converter!");
+    this.validateAmount(amount, decryptedBalance);
     logMessage("Burning encrypted tokens");
 
     const { proof, senderBalancePCT, publicInputs } =
       await this.generateTransferProof(
-        this.BURN_USER.address,
+        BURN_USER.address,
         amount,
         encryptedBalance,
         decryptedBalance,
@@ -341,6 +369,9 @@ export class EERC {
     auditorPublicKey: bigint[],
     tokenAddress?: string,
   ): Promise<OperationResult> {
+    this.validateAddress(to);
+    this.validateAmount(amount, decryptedBalance);
+
     let tokenId = 0n;
     if (tokenAddress) {
       tokenId = await this.fetchTokenId(tokenAddress);
@@ -432,14 +463,14 @@ export class EERC {
     auditorPublicKey: bigint[],
   ): Promise<IProof & { senderBalancePCT: string[] }> {
     try {
-      if (!isAddress(to)) throw new Error("Invalid receiver address!");
+      this.validateAddress(to);
+      this.validateAmount(amount, decryptedBalance);
+
+      const senderNewBalance = decryptedBalance - amount;
       const privateKey = formatKeyForCurve(this.decryptionKey);
       const receiverPublicKey = await this.fetchPublicKey(to);
       if (receiverPublicKey[0] === 0n && receiverPublicKey[1] === 0n)
         throw new Error("Receiver is not registered!");
-
-      const senderNewBalance = decryptedBalance - amount;
-      if (senderNewBalance < 0n) throw new Error("Insufficient balance!");
 
       // 1. encrypt the transfer amount for sender
       const { cipher: encryptedAmountSender } = await this.curve.encryptMessage(
@@ -536,8 +567,8 @@ export class EERC {
    * @returns user public key
    */
   async fetchPublicKey(to: string): Promise<Point> {
-    if (to === this.BURN_USER.address) {
-      return this.BURN_USER.publicKey as Point;
+    if (to === BURN_USER.address) {
+      return BURN_USER.publicKey as Point;
     }
 
     const publicKey = (await this.client.readContract({

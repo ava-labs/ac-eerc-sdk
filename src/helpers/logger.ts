@@ -4,5 +4,5 @@
  */
 export const logMessage = (msg: string) => {
   const timestamp = new Date().toLocaleString();
-  console.log(`[${timestamp}] : ${msg}`);
+  console.log(`[EERC] - [${timestamp}] : ${msg}`);
 };
