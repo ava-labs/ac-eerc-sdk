@@ -75,3 +75,9 @@ export type UseEncryptedBalanceHookResult = {
   deposit: (amount: bigint) => Promise<OperationResult>;
   refetchBalance: () => void;
 };
+
+export interface IBalanceState {
+  decrypted: bigint;
+  parsed: string;
+  encrypted: bigint[];
+}
