@@ -413,12 +413,19 @@ export class EERC {
       throw new Error("Insufficient approval amount!");
     }
 
+    // user creates new balance pct for the deposit amount
+    const { cipher, nonce, authKey } =
+      await this.poseidon.processPoseidonEncryption({
+        inputs: [amount],
+        publicKey: this.publicKey as Point,
+      });
+
     logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
       abi: this.encryptedErcAbi,
       address: this.contractAddress as `0x${string}`,
       functionName: "deposit",
-      args: [amount, tokenAddress],
+      args: [amount, tokenAddress, [...cipher, ...authKey, nonce]],
     });
 
     return { transactionHash };
