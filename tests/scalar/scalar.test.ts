@@ -1,5 +1,5 @@
 import { Scalar } from "../../src/crypto/scalar";
-import { decideCases, shiftRightTestCases } from "./scalar.test.cases";
+import { shiftRightTestCases } from "./scalar.test.cases";
 
 describe("Scalar", () => {
   test("shiftRight should handle properly", () => {
