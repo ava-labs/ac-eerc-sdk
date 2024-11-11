@@ -32,11 +32,10 @@ export function useEncryptedBalance(
    */
   const { data: contractBalance, refetch: refetchBalance } = useContractRead({
     ...eercContract,
-    functionName: tokenAddress ? "balanceOfFromAddress" : "balanceOf",
+    functionName: tokenAddress ? "getBalanceFromTokenAddress" : "balanceOf",
     args: [wallet?.account?.address, tokenAddress || 0n],
     enabled: !!wallet?.account?.address,
     watch: true,
-    suspense: true,
   });
 
   /**
@@ -200,7 +199,8 @@ export function useEncryptedBalance(
         return eerc.withdraw(
           amount,
           balanceState.encrypted,
-          [balanceState.decrypted, balanceState.decrypted],
+          balanceState.decrypted,
+          auditorPublicKey,
           tokenAddress,
         );
       } catch (error) {
@@ -208,7 +208,7 @@ export function useEncryptedBalance(
         throw error;
       }
     },
-    [eerc, balanceState, tokenAddress],
+    [eerc, balanceState, tokenAddress, auditorPublicKey],
   );
 
   return {

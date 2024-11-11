@@ -435,19 +435,84 @@ export class EERC {
   async withdraw(
     amount: bigint,
     encryptedBalance: bigint[],
-    decryptedBalance: bigint[],
+    decryptedBalance: bigint,
+    auditorPublicKey: bigint[],
     tokenAddress: string,
   ): Promise<OperationResult> {
     // only work if eerc is converter
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
-
-    if (amount <= 0n) throw new Error("Invalid amount!");
-    if (!encryptedBalance.length || decryptedBalance.length !== 2)
-      throw new Error("Invalid balance!");
+    this.validateAmount(amount, decryptedBalance);
 
     try {
-      console.log("tokenAddress", tokenAddress);
-      return { transactionHash: "0x" };
+      const tokenId = await this.fetchTokenId(tokenAddress);
+
+      const newBalance = decryptedBalance - amount;
+      const privateKey = formatKeyForCurve(this.decryptionKey);
+
+      // 1. encrypt the withdraw amount with user public key
+      const { cipher: encryptedAmount } = await this.curve.encryptMessage(
+        this.publicKey as Point,
+        amount,
+      );
+
+      // 2. create pct for the user with the new balance
+      const {
+        cipher: senderCipherText,
+        nonce: senderPoseidonNonce,
+        authKey: senderAuthKey,
+      } = await this.poseidon.processPoseidonEncryption({
+        inputs: [newBalance],
+        publicKey: this.publicKey as Point,
+      });
+
+      // 3. create pct for the auditor with the withdraw amount
+      const {
+        cipher: auditorCipherText,
+        nonce: auditorPoseidonNonce,
+        authKey: auditorAuthKey,
+        encryptionRandom: auditorEncryptionRandom,
+      } = await this.poseidon.processPoseidonEncryption({
+        inputs: [amount],
+        publicKey: auditorPublicKey as Point,
+      });
+
+      const publicInputs = [
+        ...this.publicKey,
+        ...encryptedBalance,
+        ...encryptedAmount.c1,
+        ...encryptedAmount.c2,
+        ...auditorPublicKey,
+        ...auditorCipherText,
+        ...auditorAuthKey,
+        auditorPoseidonNonce,
+        amount,
+      ].map(String);
+
+      const privateInputs = [
+        privateKey,
+        decryptedBalance,
+        auditorEncryptionRandom,
+      ].map(String);
+
+      const userBalancePCT = [
+        ...senderCipherText,
+        ...senderAuthKey,
+        senderPoseidonNonce,
+      ].map(String);
+
+      const { proof } = await this.proveFunc(
+        JSON.stringify({ privateInputs, publicInputs }),
+        "WITHDRAW",
+      );
+
+      const transactionHash = await this.wallet.writeContract({
+        abi: this.encryptedErcAbi,
+        address: this.contractAddress as `0x${string}`,
+        functionName: "withdraw",
+        args: [amount, tokenId, proof, publicInputs, userBalancePCT],
+      });
+
+      return { transactionHash };
     } catch (e) {
       throw new Error(e as string);
     }

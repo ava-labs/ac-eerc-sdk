@@ -591,6 +591,98 @@ export const ENCRYPTED_ERC_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "_user",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "_tokenAddress",
+        type: "address",
+      },
+    ],
+    name: "getBalanceFromTokenAddress",
+    outputs: [
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256",
+                name: "X",
+                type: "uint256",
+              },
+              {
+                internalType: "uint256",
+                name: "Y",
+                type: "uint256",
+              },
+            ],
+            internalType: "struct Point",
+            name: "c1",
+            type: "tuple",
+          },
+          {
+            components: [
+              {
+                internalType: "uint256",
+                name: "X",
+                type: "uint256",
+              },
+              {
+                internalType: "uint256",
+                name: "Y",
+                type: "uint256",
+              },
+            ],
+            internalType: "struct Point",
+            name: "c2",
+            type: "tuple",
+          },
+        ],
+        internalType: "struct EGCT",
+        name: "eGCT",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            internalType: "uint256[7]",
+            name: "pct",
+            type: "uint256[7]",
+          },
+          {
+            internalType: "uint256",
+            name: "index",
+            type: "uint256",
+          },
+        ],
+        internalType: "struct AmountPCT[]",
+        name: "amountPCTs",
+        type: "tuple[]",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+      {
+        internalType: "uint256",
+        name: "transactionIndex",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "getTokens",
     outputs: [
