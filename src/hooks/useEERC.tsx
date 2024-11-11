@@ -12,7 +12,7 @@ import { logMessage } from "../helpers";
 import { ENCRYPTED_ERC_ABI } from "../utils";
 import { REGISTRAR_ABI } from "../utils/Registrar.abi";
 import { useProver } from "../wasm";
-import type { DecryptedTransaction, EERCHookResult } from "./types";
+import type { DecryptedTransaction, EERCHookResult, IEERCState } from "./types";
 import { useEncryptedBalance } from "./useEncryptedBalance";
 
 export function useEERC(
@@ -23,20 +23,23 @@ export function useEERC(
   wasmUrl: string,
   decryptionKey?: string,
 ): EERCHookResult {
-  const [eerc, setEERC] = useState<EERC>();
-  const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  const [isConverter, setIsConverter] = useState<boolean>(false);
-  const [auditorPublicKey, setAuditorPublicKey] = useState<bigint[]>([]);
+  const [eerc, setEerc] = useState<EERC | undefined>(undefined);
+  const [eercState, setEercState] = useState<IEERCState>({
+    isInitialized: false,
+    isConverter: false,
+    auditorPublicKey: [],
+    name: "",
+    symbol: "",
+    registrarAddress: "",
+    isRegistered: false,
+    isAllDataFetched: false,
+  });
 
-  const [name, setName] = useState<string>("");
-  const [symbol, setSymbol] = useState<string>("");
-  const [registrarAddress, setRegistrarAddress] = useState<string>("");
-
-  // isRegistered to the contract
-  const [isRegistered, setIsRegistered] = useState<boolean>(false);
-
-  // flag for all data fetched
-  const [isAllDataFetched, setIsAllDataFetched] = useState<boolean>(false);
+  const updateEercState = useCallback(
+    (updates: Partial<IEERCState>) =>
+      setEercState((prevState) => ({ ...prevState, ...updates })),
+    [],
+  );
 
   // use prover
   const { prove } = useProver({
@@ -53,10 +56,10 @@ export function useEERC(
 
   const registrarContract = useMemo(
     () => ({
-      address: registrarAddress as `0x${string}`,
+      address: eercState.registrarAddress as `0x${string}`,
       abi: REGISTRAR_ABI as Abi,
     }),
-    [registrarAddress],
+    [eercState.registrarAddress],
   );
 
   /**
@@ -107,17 +110,21 @@ export function useEERC(
       const [nameData, symbolData, registrarAddress, isConverterData] =
         contractData;
 
-      if (nameData.status === "success") setName(nameData.result as string);
-      if (symbolData.status === "success")
-        setSymbol(symbolData.result as string);
-
-      if (registrarAddress.status === "success")
-        setRegistrarAddress(registrarAddress.result as string);
-
-      if (isConverterData.status === "success")
-        setIsConverter(isConverterData.result as boolean);
+      updateEercState({
+        name: nameData.status === "success" ? (nameData.result as string) : "",
+        symbol:
+          symbolData.status === "success" ? (symbolData.result as string) : "",
+        registrarAddress:
+          registrarAddress.status === "success"
+            ? (registrarAddress.result as string)
+            : "",
+        isConverter:
+          isConverterData.status === "success"
+            ? (isConverterData.result as boolean)
+            : false,
+      });
     }
-  }, [contractData, isContractDataFetched]);
+  }, [contractData, isContractDataFetched, updateEercState]);
 
   /**
    * fetch auditor public key
@@ -136,16 +143,20 @@ export function useEERC(
 
   useEffect(() => {
     if (auditorPublicKeyData && isAuditorPublicKeyFetched) {
-      setAuditorPublicKey(auditorPublicKeyData as bigint[]);
+      updateEercState({
+        auditorPublicKey: auditorPublicKeyData as bigint[],
+      });
     }
-  }, [auditorPublicKeyData, isAuditorPublicKeyFetched]);
+  }, [auditorPublicKeyData, isAuditorPublicKeyFetched, updateEercState]);
 
   useEffect(() => {
     if (userData && isUserDataFetched) {
       const data = userData as Point;
-      setIsRegistered(!(data[0] === 0n && data[1] === 0n));
+      updateEercState({
+        isRegistered: !(data[0] === 0n && data[1] === 0n),
+      });
     }
-  }, [userData, isUserDataFetched]);
+  }, [userData, isUserDataFetched, updateEercState]);
 
   // check is all data fetched
   useEffect(() => {
@@ -155,65 +166,87 @@ export function useEERC(
       isAuditorPublicKeyFetched
     ) {
       logMessage("All data fetched");
-      setIsAllDataFetched(true);
+      updateEercState({
+        isAllDataFetched: true,
+      });
     }
 
     return () => {
-      setIsAllDataFetched(false);
+      updateEercState({
+        isAllDataFetched: false,
+      });
     };
-  }, [isUserDataFetched, isContractDataFetched, isAuditorPublicKeyFetched]);
+  }, [
+    isUserDataFetched,
+    isContractDataFetched,
+    isAuditorPublicKeyFetched,
+    updateEercState,
+  ]);
 
   useEffect(() => {
-    // Check if the required data is ready before initializing
-    if (
-      !!client &&
-      !!wallet?.account.address &&
-      !!contractAddress &&
-      isConverter !== undefined &&
-      registrarAddress.length > 0 &&
-      !!tableUrl &&
-      !!prove &&
-      !isInitialized
-    ) {
-      const _eerc = new EERC(
-        client,
-        wallet,
-        contractAddress as `0x${string}`,
-        registrarAddress as `0x${string}`,
-        isConverter as boolean,
-        tableUrl,
-        prove,
-        decryptionKey,
-      );
+    let mounted = true;
 
-      _eerc
-        .init()
-        .then(() => {
-          setEERC(_eerc);
-          setIsInitialized(true);
-        })
-        .catch((error) => {
-          logMessage(`Failed to initialize EERC: ${error}`);
-        });
-    }
+    const initializeEERC = async () => {
+      if (
+        !client ||
+        !wallet?.account.address ||
+        !contractAddress ||
+        eercState.isConverter === undefined ||
+        !eercState.registrarAddress ||
+        !tableUrl ||
+        !prove ||
+        eercState.isInitialized
+      )
+        return;
+
+      try {
+        const _eerc = new EERC(
+          client,
+          wallet,
+          contractAddress as `0x${string}`,
+          eercState.registrarAddress as `0x${string}`,
+          eercState.isConverter,
+          tableUrl,
+          prove,
+          decryptionKey,
+        );
+
+        await _eerc.init();
+
+        if (mounted) {
+          setEerc(_eerc);
+          updateEercState({
+            isInitialized: true,
+          });
+        }
+      } catch (error) {
+        logMessage(`Failed to initialize EERC: ${error}`);
+      }
+    };
+
+    initializeEERC();
 
     // Cleanup function to reset state only when necessary
     return () => {
-      if (isInitialized) {
-        setEERC(undefined);
-        setIsInitialized(false);
+      mounted = false;
+      if (eercState.isInitialized) {
+        updateEercState({
+          isInitialized: false,
+        });
+        setEerc(undefined);
       }
     };
   }, [
     client,
     wallet,
     contractAddress,
-    isConverter,
-    registrarAddress,
+    eercState.isConverter,
+    eercState.registrarAddress,
     decryptionKey,
     tableUrl,
     prove,
-    isInitialized,
+    eercState.isInitialized,
+    updateEercState,
   ]);
 
   /**
@@ -224,8 +257,8 @@ export function useEERC(
     if (!eerc) {
       return false;
     }
-    return isRegistered && !eerc?.isDecryptionKeySet;
-  }, [eerc, isRegistered]);
+    return eercState.isRegistered && !eerc?.isDecryptionKeySet;
+  }, [eerc, eercState.isRegistered]);
 
   /**
    * register user to the EERC contract
@@ -295,15 +328,15 @@ export function useEERC(
    * @returns boolean - returns true if user is auditor
    */
   const areYouAuditor = useMemo(() => {
-    if (!eerc || !auditorPublicKey.length) {
+    if (!eerc || !eercState.auditorPublicKey.length) {
       return false;
     }
 
     return (
-      auditorPublicKey[0] === eerc?.publicKey[0] &&
-      auditorPublicKey[1] === eerc?.publicKey[1]
+      eercState.auditorPublicKey[0] === eerc?.publicKey[0] &&
+      eercState.auditorPublicKey[1] === eerc?.publicKey[1]
     );
-  }, [eerc, auditorPublicKey]);
+  }, [eerc, eercState.auditorPublicKey]);
 
   /**
    * set contract auditor public key
@@ -319,19 +352,19 @@ export function useEERC(
   );
 
   return {
-    isInitialized, // is sdk initialized
-    isAllDataFetched, // is all data fetched
-    isRegistered, // is user registered to the contract
-    isConverter, // is contract converter
+    isInitialized: eercState.isInitialized, // is sdk initialized
+    isAllDataFetched: eercState.isAllDataFetched, // is all data fetched
+    isRegistered: eercState.isRegistered, // is user registered to the contract
+    isConverter: eercState.isConverter, // is contract converter
     publicKey: eerc?.publicKey ?? [], // user's public key
-    auditorPublicKey, // auditor's public key
+    auditorPublicKey: eercState.auditorPublicKey, // auditor's public key
     isAuditorKeySet: Boolean(
-      auditorPublicKey.length > 0 &&
-        auditorPublicKey[0] !== 0n &&
-        auditorPublicKey[1] !== 0n,
+      eercState.auditorPublicKey.length > 0 &&
+        eercState.auditorPublicKey[0] !== 0n &&
+        eercState.auditorPublicKey[1] !== 0n,
     ),
-    name, // EERC name, (only for stand-alone version)
-    symbol, // EERC symbol, (only for stand-alone version)
+    name: eercState.name, // EERC name, (only for stand-alone version)
+    symbol: eercState.symbol, // EERC symbol, (only for stand-alone version)
     shouldGenerateDecryptionKey,
     areYouAuditor,
 

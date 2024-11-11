@@ -435,6 +435,9 @@ export class EERC {
       if (!isAddress(to)) throw new Error("Invalid receiver address!");
       const privateKey = formatKeyForCurve(this.decryptionKey);
       const receiverPublicKey = await this.fetchPublicKey(to);
+      if (receiverPublicKey[0] === 0n && receiverPublicKey[1] === 0n)
+        throw new Error("Receiver is not registered!");
+
       const senderNewBalance = decryptedBalance - amount;
       if (senderNewBalance < 0n) throw new Error("Insufficient balance!");
 

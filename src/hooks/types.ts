@@ -81,3 +81,14 @@ export interface IBalanceState {
   parsed: string;
   encrypted: bigint[];
 }
+
+export interface IEERCState {
+  isConverter: boolean;
+  isInitialized: boolean;
+  auditorPublicKey: bigint[];
+  name: string;
+  symbol: string;
+  registrarAddress: string;
+  isRegistered: boolean;
+  isAllDataFetched: boolean;
+}
