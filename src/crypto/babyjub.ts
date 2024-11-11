@@ -7,6 +7,9 @@ export class BabyJub {
   public A = 168700n;
   public D = 168696n;
 
+  /**
+   * base8 point
+   */
   public Base8: Point = [
     5299619240641551281634865583518297030282874472190772894086521144482721001553n,
     16950150798460657717958625567821834550301663161624707787222815936182638968203n,
@@ -16,15 +19,23 @@ export class BabyJub {
     this.field = field;
   }
 
+  /**
+   * returns the order of the curve
+   */
   static order() {
     return 21888242871839275222246405745257275088614511777268538073601725287587578984328n;
   }
 
+  /**
+   * returns the sub order of the curve
+   */
   static subOrder() {
     return Scalar.shiftRight(BabyJub.order(), 3);
   }
 
-  // generates and returns a random scalar in the field
+  /**
+   * generates and returns a random scalar in the field
+   */
   static async generateRandomValue(): Promise<bigint> {
     const lowerBound = SNARK_FIELD_SIZE / 2n;
 
@@ -37,7 +48,12 @@ export class BabyJub {
     return rand % SNARK_FIELD_SIZE;
   }
 
-  // adds two points on the curve
+  /**
+   * adds two points on the curve
+   * @param a point a
+   * @param b point b
+   * @returns point
+   */
   addPoints(a: Point, b: Point): Point {
     const beta = this.field.mul(a[0], b[1]);
     const gamma = this.field.mul(a[1], b[0]);
@@ -63,14 +79,23 @@ export class BabyJub {
     return [x, y] as Point;
   }
 
-  // subtract points on the curve
-  // p1 - p2 = p1 + (-p2) (additive inverse)
+  /**
+   * subtracts two points on the curve
+   * @param p1 point a
+   * @param p2 point b
+   * @returns point
+   */
   subPoints(p1: Point, p2: Point): Point {
     const negatedP2: Point = [this.field.negate(p2[0]), p2[1]];
     return this.addPoints(p1, negatedP2);
   }
 
-  // multiplies a point by a scalar
+  /**
+   * multiplies a point by a scalar
+   * @param p point
+   * @param s scalar
+   * @returns point
+   */
   mulWithScalar(p: Point, s: bigint): Point {
     let res = [this.field.zero, this.field.one] as Point;
     let e = p;
@@ -85,9 +110,13 @@ export class BabyJub {
     return res;
   }
 
-  // implements the equation of the curve
-  // y^2 = x^3 + A*x^2 + x
-  // returns true if the point is on the curve
+  /**
+   * implements the equation of the curve
+   * y^2 = x^3 + A*x^2 + x
+   * returns true if the point is on the curve
+   * @param p point
+   * @returns boolean
+   */
   inCurve(p: Point): boolean {
     const x2 = this.field.mul(p[0], p[0]);
     const y2 = this.field.mul(p[1], p[1]);
@@ -100,7 +129,11 @@ export class BabyJub {
     );
   }
 
-  // generates public key from secret key
+  /**
+   * generates public key from secret key
+   * @param secretKey secret key
+   * @returns point
+   */
   generatePublicKey(secretKey: bigint): Point {
     if (!this.field.isInField(secretKey)) {
       throw new Error("Secret key is not in the field");
@@ -108,34 +141,12 @@ export class BabyJub {
     return this.mulWithScalar(this.Base8, secretKey);
   }
 
-  // function calculates the balance in whole and fractional
-  // and encrypt with provided public key
-  async encryptAmount(
-    totalAmount: bigint,
-    publicKey: Point,
-  ): Promise<{
-    whole: { cipher: ElGamalCipherText; random: bigint; originalValue: bigint };
-    fractional: {
-      cipher: ElGamalCipherText;
-      random: bigint;
-      originalValue: bigint;
-    };
-  }> {
-    const [wholeAmount, fractionalAmount] = Scalar.recalculate(totalAmount);
-    const whole = await this.elGamalEncryptionWithScalar(
-      publicKey,
-      wholeAmount,
-    );
-    const fractional = await this.elGamalEncryptionWithScalar(
-      publicKey,
-      fractionalAmount,
-    );
-    return {
-      whole: { ...whole, originalValue: wholeAmount },
-      fractional: { ...fractional, originalValue: fractionalAmount },
-    };
-  }
-
+  /**
+   * encrypts a message point with a public key
+   * @param publicKey public key
+   * @param message message point
+   * @returns ciphertext and random
+   */
   async encryptMessage(
     publicKey: Point,
     message: bigint,
@@ -143,25 +154,27 @@ export class BabyJub {
     return this.elGamalEncryptionWithScalar(publicKey, message);
   }
 
-  // encrypts the array of bigint value
-  async encryptArray(
-    values: bigint[],
+  /**
+   * encrypts a scalar message with a public key,before encryption it multiplies the message with base8
+   * to get the corresponding point on the curve
+   * @param publicKey public key
+   * @param message message bigint
+   * @returns ciphertext and random
+   */
+  async elGamalEncryptionWithScalar(
     publicKey: Point,
-  ): Promise<{ cipher: ElGamalCipherText[]; random: bigint[] }> {
-    const cipher: ElGamalCipherText[] = [];
-    const random: bigint[] = [];
-    for (const value of values) {
-      const { cipher: c, random: r } = await this.elGamalEncryptionWithScalar(
-        publicKey,
-        value,
-      );
-      cipher.push(c);
-      random.push(r);
-    }
-    return { cipher, random };
+    message: bigint,
+  ): Promise<{ cipher: ElGamalCipherText; random: bigint }> {
+    const mm = this.mulWithScalar(this.Base8, message);
+    return this.elGamalEncryption(publicKey, mm);
   }
 
-  // el-gamal encryption with point message
+  /**
+   * el-gamal encryption with point message
+   * @param publicKey public key
+   * @param message message point
+   * @returns ciphertext and random
+   */
   async elGamalEncryption(
     publicKey: Point,
     message: Point,
@@ -173,23 +186,23 @@ export class BabyJub {
     return { cipher: { c1, c2 } as ElGamalCipherText, random: random };
   }
 
-  // el-gamal encryption with scalar message
-  async elGamalEncryptionWithScalar(
-    publicKey: Point,
-    message: bigint,
-  ): Promise<{ cipher: ElGamalCipherText; random: bigint }> {
-    const mm = this.mulWithScalar(this.Base8, message);
-    return this.elGamalEncryption(publicKey, mm);
-  }
-
-  // el-gamal decryption
+  /**
+   * el-gamal decryption
+   * @param privateKey private key
+   * @param cipher ciphertext
+   * @returns message
+   */
   elGamalDecryption(privateKey: bigint, cipher: ElGamalCipherText): Point {
     const c1x = this.mulWithScalar(cipher.c1, privateKey);
     const c1xInverse = [this.field.mul(c1x[0], -1n), c1x[1]] as Point;
     return this.addPoints(cipher.c2, c1xInverse);
   }
 
-  // generates random bytes depending on the environment
+  /**
+   * generates random bytes depending on the environment
+   * @param bytes number of bytes
+   * @returns random bytes
+   */
   private static async getRandomBytes(bytes: number): Promise<Uint8Array> {
     if (
       typeof window !== "undefined" &&

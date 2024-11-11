@@ -30,34 +30,6 @@ export const Scalar = {
     return adjusted;
   },
 
-  // decide how much to subtract and add from the balance with the rules of dynamic balance
-  decide(
-    oldWhole: bigint,
-    oldFractional: bigint,
-    amountWhole: bigint,
-    amountFractional: bigint,
-  ): [bigint[], bigint[]] {
-    const balanceTotal = Scalar.calculate(oldWhole, oldFractional);
-    const amountTotal = Scalar.calculate(amountWhole, amountFractional);
-    const newBalanceTotal = balanceTotal - amountTotal;
-    if (newBalanceTotal < 0) throw new Error("Insufficient balance!");
-
-    const newBalance = Scalar.recalculate(newBalanceTotal);
-    const x = oldWhole - newBalance[0];
-    const y = oldFractional - newBalance[1];
-
-    const toBeSubtracted = [0n, 0n];
-    const toBeAdded = [0n, 0n];
-
-    if (x > 0n) toBeSubtracted[0] = x;
-    else toBeAdded[0] = -x;
-
-    if (y > 0n) toBeSubtracted[1] = y;
-    else toBeAdded[1] = -y;
-
-    return [toBeSubtracted, toBeAdded];
-  },
-
   parseEERCBalance(balance: bigint | [bigint, bigint]): string {
     let whole: bigint;
     let fractional: bigint;

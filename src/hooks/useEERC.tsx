@@ -59,7 +59,9 @@ export function useEERC(
     [registrarAddress],
   );
 
-  // get user data for checking is user registered
+  /**
+   * get user data for checking is user registered
+   */
   const {
     data: userData,
     isFetched: isUserDataFetched,
@@ -72,7 +74,9 @@ export function useEERC(
     watch: true,
   });
 
-  // get contract data
+  /**
+   * get contract name,symbol,registrar address and isConverter or not
+   */
   const { data: contractData, isFetched: isContractDataFetched } =
     useContractReads({
       contracts: [
@@ -97,25 +101,6 @@ export function useEERC(
       ],
     });
 
-  const {
-    data: auditorPublicKeyData,
-    isFetched: isAuditorPublicKeyFetched,
-    refetch: refetchAuditor,
-  } = useContractRead({
-    ...eercContract,
-    functionName: "auditorPublicKey",
-    args: [],
-    enabled: Boolean(contractAddress),
-    watch: true,
-  });
-
-  // update auditor public key
-  useEffect(() => {
-    if (auditorPublicKeyData && isAuditorPublicKeyFetched) {
-      setAuditorPublicKey(auditorPublicKeyData as bigint[]);
-    }
-  }, [auditorPublicKeyData, isAuditorPublicKeyFetched]);
-
   // update name and symbol data
   useEffect(() => {
     if (contractData && isContractDataFetched) {
@@ -134,7 +119,27 @@ export function useEERC(
     }
   }, [contractData, isContractDataFetched]);
 
-  // update user registration status
+  /**
+   * fetch auditor public key
+   */
+  const {
+    data: auditorPublicKeyData,
+    isFetched: isAuditorPublicKeyFetched,
+    refetch: refetchAuditor,
+  } = useContractRead({
+    ...eercContract,
+    functionName: "auditorPublicKey",
+    args: [],
+    enabled: Boolean(contractAddress),
+    watch: true,
+  });
+
+  useEffect(() => {
+    if (auditorPublicKeyData && isAuditorPublicKeyFetched) {
+      setAuditorPublicKey(auditorPublicKeyData as bigint[]);
+    }
+  }, [auditorPublicKeyData, isAuditorPublicKeyFetched]);
+
   useEffect(() => {
     if (userData && isUserDataFetched) {
       const data = userData as Point;
@@ -211,6 +216,10 @@ export function useEERC(
     isInitialized,
   ]);
 
+  /**
+   * check if the decryption key should be generated
+   * @returns boolean - returns true if user is registered and decryption key is not set
+   */
   const shouldGenerateDecryptionKey = useMemo(() => {
     if (!eerc) {
       return false;
@@ -218,7 +227,10 @@ export function useEERC(
     return isRegistered && !eerc?.isDecryptionKeySet;
   }, [eerc, isRegistered]);
 
-  // registers the user to the EERC contract
+  /**
+   * register user to the EERC contract
+   * @returns object - returns the key and transaction hash
+   */
   const register = useCallback(() => {
     if (!eerc) {
       throw new Error("EERC not initialized");
@@ -226,7 +238,10 @@ export function useEERC(
     return eerc.register();
   }, [eerc]);
 
-  // generate decryption key
+  /**
+   * generate decryption key
+   * @returns string - decryption key
+   */
   const generateDecryptionKey = useCallback(() => {
     if (!eerc) {
       throw new Error("EERC not initialized");
@@ -234,7 +249,10 @@ export function useEERC(
     return eerc.generateDecryptionKey();
   }, [eerc]);
 
-  // decrypt the encrypted data by the auditor public key
+  /**
+   * decrypt the encrypted data by the auditor public key
+   * @returns array of decrypted transactions
+   */
   const auditorDecrypt = useCallback((): Promise<DecryptedTransaction[]> => {
     if (!eerc) {
       throw new Error("EERC not initialized");
@@ -242,7 +260,11 @@ export function useEERC(
     return eerc.auditorDecrypt();
   }, [eerc]);
 
-  // check is the address is registered to the contract
+  /**
+   * check is the address is registered to the contract
+   * @param address - address to check
+   * @returns object - returns isRegistered and error
+   */
   const isAddressRegistered = useCallback(
     async (address: `0x${string}`) => {
       try {
@@ -260,11 +282,18 @@ export function useEERC(
     [eerc],
   );
 
-  // returns the encrypted balance hook
+  /**
+   * returns the encrypted balance hook
+   * @param tokenAddress - token address
+   * @returns encrypted balance hook
+   */
   const useEncryptedBalanceHook = (tokenAddress?: `0x${string}`) =>
     useEncryptedBalance(eerc, contractAddress, wallet, tokenAddress);
 
-  // check is user auditor
+  /**
+   * check is user auditor
+   * @returns boolean - returns true if user is auditor
+   */
   const areYouAuditor = useMemo(() => {
     if (!eerc || !auditorPublicKey.length) {
       return false;
@@ -276,6 +305,11 @@ export function useEERC(
     );
   }, [eerc, auditorPublicKey]);
 
+  /**
+   * set contract auditor public key
+   * @param address - auditor address
+   * @returns object - returns transaction hash
+   */
   const setContractAuditorPublicKey = useCallback(
     (address: `0x${string}`) => {
       if (!eerc) throw new Error("EERC not initialized");

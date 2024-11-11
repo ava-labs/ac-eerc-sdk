@@ -21,26 +21,24 @@ export const useProver = ({ url }: useProverProps) => {
         const { wasmUrl, funcArgs, proofType } = e.data;
 
         try {
-          // Initialize a new Go runtime for every proof generation
           const go = new Go();
           let wasm = null;
 
           // Check if Wasm is already instantiated and cached
           if ('instantiateStreaming' in WebAssembly) {
-            const rr = await WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject);
-            wasm = rr.instance;
+            const result = await WebAssembly.instantiateStreaming(fetch(wasmUrl), go.importObject);
+            wasm = result.instance;
           } else {
             const resp = await fetch(wasmUrl);
             const bytes = await resp.arrayBuffer();
-            const rr = await WebAssembly.instantiate(bytes, go.importObject);
-            wasm = rr.instance;
+            const result = await WebAssembly.instantiate(bytes, go.importObject);
+            wasm = result.instance;
           }
 
           go.run(wasm);
+          const proof = generateProof(proofType, funcArgs);
+          self.postMessage(proof);
 
-          const result = generateProof(proofType, funcArgs);
-
-          self.postMessage(result);
         } catch (error) {
           console.log('Error:', error);
           self.postMessage({ error: "Error generating proof" });
@@ -66,7 +64,12 @@ export const useProver = ({ url }: useProverProps) => {
     };
   }, []);
 
-  // Memoize the prove function using useCallback
+  /**
+   * generate proof by using the wasm module
+   * @param data - data to generate proof
+   * @param proofType - proof type
+   * @returns proof
+   */
   const prove = useCallback(
     async (
       data: string,

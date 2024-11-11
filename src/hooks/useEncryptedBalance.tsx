@@ -44,7 +44,6 @@ export function useEncryptedBalance(
   });
 
   useEffect(() => {
-    console.log("decimalsData", decimalsData);
     if (!decimalsData) return;
     setDecimals(decimalsData as bigint);
   }, [decimalsData]);
@@ -114,22 +113,14 @@ export function useEncryptedBalance(
       if (!eerc || !auditorPublicKey || !encryptedBalance.length)
         throw new Error("EERC not initialized");
 
-      return tokenAddress
-        ? eerc.transferToken(
-            to,
-            amount,
-            auditorPublicKey,
-            tokenAddress,
-            encryptedBalance,
-            decryptedBalance,
-          )
-        : eerc.transfer(
-            to,
-            amount,
-            encryptedBalance,
-            decryptedBalance,
-            auditorPublicKey,
-          );
+      return eerc.transfer(
+        to,
+        amount,
+        encryptedBalance,
+        decryptedBalance,
+        auditorPublicKey,
+        tokenAddress,
+      );
     },
     [eerc, auditorPublicKey, encryptedBalance, decryptedBalance, tokenAddress],
   );

@@ -61,34 +61,4 @@ describe("Scalar", () => {
       expect(Scalar.adjust(whole, fractional)).toEqual(expected);
     }
   });
-
-  test("decide should handle properly", () => {
-    for (const c of decideCases) {
-      expect(
-        Scalar.decide(
-          c.input.oldWhole,
-          c.input.oldFractional,
-          c.input.amountWhole,
-          c.input.amountFractional,
-        ),
-      ).toEqual([c.expected.toBeSubtracted, c.expected.toBeAdded]);
-    }
-
-    // insufficient balance
-    const insufficientBalance = {
-      oldWhole: 20n,
-      oldFractional: 10n,
-      amountWhole: 20n,
-      amountFractional: 20n,
-    };
-
-    expect(() => {
-      Scalar.decide(
-        insufficientBalance.oldWhole,
-        insufficientBalance.oldFractional,
-        insufficientBalance.amountWhole,
-        insufficientBalance.amountFractional,
-      );
-    }).toThrow("Insufficient balance!");
-  });
 });

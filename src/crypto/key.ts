@@ -3,8 +3,11 @@ import { sha256 } from "js-sha256";
 import { SHA_256_MAX_DIGEST, SNARK_FIELD_SIZE } from "../utils";
 import { Scalar } from "./scalar";
 
-// formats private key for the curve
-// input is hex string
+/**
+ * formats private key for the curve
+ * @param key hex string
+ * @returns bigint
+ */
 export const formatKeyForCurve = (key: string): bigint => {
   let hash = createBlakeHash("blake512")
     .update(Buffer.from(key, "hex"))
