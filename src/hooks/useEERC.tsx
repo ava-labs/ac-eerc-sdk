@@ -19,7 +19,6 @@ export function useEERC(
   client: PublicClient,
   wallet: WalletClient,
   contractAddress: string,
-  tableUrl: string,
   wasmUrl: string,
   decryptionKey?: string,
 ): EERCHookResult {
@@ -76,6 +75,15 @@ export function useEERC(
     enabled: Boolean(eerc && wallet?.account?.address && registrarContract),
     watch: true,
   });
+
+  useEffect(() => {
+    if (userData && isUserDataFetched) {
+      const data = userData as Point;
+      updateEercState({
+        isRegistered: !(data[0] === 0n && data[1] === 0n),
+      });
+    }
+  }, [userData, isUserDataFetched, updateEercState]);
 
   /**
    * get contract name,symbol,registrar address and isConverter or not
@@ -149,21 +157,22 @@ export function useEERC(
     }
   }, [auditorPublicKeyData, isAuditorPublicKeyFetched, updateEercState]);
 
-  useEffect(() => {
-    if (userData && isUserDataFetched) {
-      const data = userData as Point;
-      updateEercState({
-        isRegistered: !(data[0] === 0n && data[1] === 0n),
-      });
-    }
-  }, [userData, isUserDataFetched, updateEercState]);
+  const { data: auditorAddress, isFetched: isAuditorAddressFetched } =
+    useContractRead({
+      ...eercContract,
+      functionName: "auditor",
+      args: [],
+      enabled: Boolean(contractAddress) && Boolean(eerc),
+      watch: true,
+    }) as { data: `0x${string}`; isFetched: boolean };
 
   // check is all data fetched
   useEffect(() => {
     if (
       isUserDataFetched &&
       isContractDataFetched &&
-      isAuditorPublicKeyFetched
+      isAuditorPublicKeyFetched &&
+      isAuditorAddressFetched
     ) {
       logMessage("All data fetched");
       updateEercState({
@@ -180,6 +189,7 @@ export function useEERC(
     isUserDataFetched,
     isContractDataFetched,
     isAuditorPublicKeyFetched,
+    isAuditorAddressFetched,
     updateEercState,
   ]);
 
@@ -193,7 +203,6 @@ export function useEERC(
         !contractAddress ||
         eercState.isConverter === undefined ||
         !eercState.registrarAddress ||
-        !tableUrl ||
         !prove ||
         eercState.isInitialized
       )
@@ -206,12 +215,9 @@ export function useEERC(
           contractAddress as `0x${string}`,
           eercState.registrarAddress as `0x${string}`,
           eercState.isConverter,
-          tableUrl,
           prove,
           decryptionKey,
         );
-
-        await _eerc.init();
 
         if (mounted) {
           setEerc(_eerc);
@@ -243,7 +249,6 @@ export function useEERC(
     eercState.isConverter,
     eercState.registrarAddress,
     decryptionKey,
-    tableUrl,
     prove,
     eercState.isInitialized,
     updateEercState,
@@ -357,6 +362,7 @@ export function useEERC(
     isRegistered: eercState.isRegistered, // is user registered to the contract
     isConverter: eercState.isConverter, // is contract converter
     publicKey: eerc?.publicKey ?? [], // user's public key
+    auditorAddress,
     auditorPublicKey: eercState.auditorPublicKey, // auditor's public key
     isAuditorKeySet: Boolean(
       eercState.auditorPublicKey.length > 0 &&

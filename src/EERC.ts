@@ -1,7 +1,6 @@
 import { type Log, isAddress } from "viem";
 import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
-import { BSGS } from "./crypto/bsgs";
 import { FF } from "./crypto/ff";
 import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
 import { Poseidon } from "./crypto/poseidon";
@@ -30,7 +29,6 @@ export class EERC {
   public curve: BabyJub;
   public field: FF;
   public poseidon: Poseidon;
-  public bsgs: BSGS;
 
   public contractAddress: `0x${string}`;
   public isConverter: boolean;
@@ -54,7 +52,6 @@ export class EERC {
     contractAddress: `0x${string}`,
     registrarAddress: `0x${string}`,
     isConverter: boolean,
-    lookupTableUrl: string,
     proveFunc: IProveFunction,
     decryptionKey?: string,
   ) {
@@ -69,7 +66,6 @@ export class EERC {
     this.curve = new BabyJub(this.field);
     this.poseidon = new Poseidon(this.field, this.curve);
     this.decryptionKey = decryptionKey || "";
-    this.bsgs = new BSGS(lookupTableUrl, this.curve);
 
     if (this.decryptionKey) {
       const formatted = formatKeyForCurve(this.decryptionKey);
@@ -102,15 +98,6 @@ export class EERC {
     if (amount <= 0n) throw new Error("Invalid amount!");
     if (senderBalance && amount > senderBalance)
       throw new Error("Insufficient balance!");
-  }
-
-  async init() {
-    try {
-      await this.bsgs.initialize();
-      logMessage("EERC initialized successfully!");
-    } catch {
-      this.throwError("Failed to initialize EERC!");
-    }
   }
 
   /**
@@ -701,6 +688,7 @@ export class EERC {
     balancePCT: bigint[],
   ) {
     const privateKey = formatKeyForCurve(this.decryptionKey);
+
     let totalBalance = 0n;
 
     if (balancePCT.some((e) => e !== 0n)) {
@@ -828,7 +816,7 @@ export class EERC {
           transactionHash: log.transactionHash,
           amount: decryptedAmount.toString(),
           sender: tx.from,
-          type: log.eventName,
+          type: log.eventName.replace("Private", ""),
           receiver: tx.to,
           blockNumber: tx.blockNumber,
         });

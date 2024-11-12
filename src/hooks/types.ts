@@ -36,6 +36,7 @@ export type EERCHookResult = {
   isRegistered: boolean;
   isConverter: boolean;
   publicKey: bigint[];
+  auditorAddress: `0x${string}`;
   auditorPublicKey: bigint[];
   isAuditorKeySet: boolean;
   name: string;

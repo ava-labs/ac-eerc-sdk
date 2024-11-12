@@ -64,7 +64,13 @@ export function useEncryptedBalance(
 
   useEffect(() => {
     let mounted = true;
-    if (!contractBalance || !eerc || !eerc.isDecryptionKeySet) return;
+    if (
+      !contractBalance ||
+      !eerc ||
+      !eerc.isDecryptionKeySet ||
+      !wallet?.account?.address
+    )
+      return;
 
     const contractBalanceArray = contractBalance as bigint[];
     const elGamalCipherText = contractBalanceArray[0] as unknown as EGCT;
@@ -76,6 +82,7 @@ export function useEncryptedBalance(
       amountPCTs,
       balancePCT,
     );
+    console.log("totalBalance", totalBalance, mounted);
 
     if (mounted) {
       setBalanceState((prev) => ({
@@ -94,7 +101,7 @@ export function useEncryptedBalance(
     return () => {
       mounted = false;
     };
-  }, [contractBalance, eerc]);
+  }, [contractBalance, eerc, wallet?.account?.address]);
 
   /**
    * mint amount of encrypted tokens to the user
