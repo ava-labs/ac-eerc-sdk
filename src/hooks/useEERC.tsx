@@ -32,6 +32,7 @@ export function useEERC(
     registrarAddress: "",
     isRegistered: false,
     isAllDataFetched: false,
+    owner: "",
   });
 
   const updateEercState = useCallback(
@@ -109,14 +110,25 @@ export function useEERC(
           ...eercContract,
           functionName: "isConverter",
         },
+        {
+          ...eercContract,
+          functionName: "owner",
+        },
       ],
+      watch: true,
+      enabled: Boolean(contractAddress),
     });
 
   // update name and symbol data
   useEffect(() => {
     if (contractData && isContractDataFetched) {
-      const [nameData, symbolData, registrarAddress, isConverterData] =
-        contractData;
+      const [
+        nameData,
+        symbolData,
+        registrarAddress,
+        isConverterData,
+        ownerData,
+      ] = contractData;
 
       updateEercState({
         name: nameData.status === "success" ? (nameData.result as string) : "",
@@ -130,6 +142,10 @@ export function useEERC(
           isConverterData.status === "success"
             ? (isConverterData.result as boolean)
             : false,
+        owner:
+          ownerData.status === "success"
+            ? (ownerData.result as `0x${string}`)
+            : "",
       });
     }
   }, [contractData, isContractDataFetched, updateEercState]);
@@ -362,7 +378,8 @@ export function useEERC(
     isRegistered: eercState.isRegistered, // is user registered to the contract
     isConverter: eercState.isConverter, // is contract converter
     publicKey: eerc?.publicKey ?? [], // user's public key
-    auditorAddress,
+    auditorAddress, // auditor address
+    owner: eercState.owner, // owner address
     auditorPublicKey: eercState.auditorPublicKey, // auditor's public key
     isAuditorKeySet: Boolean(
       eercState.auditorPublicKey.length > 0 &&

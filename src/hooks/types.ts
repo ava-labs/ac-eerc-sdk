@@ -37,6 +37,7 @@ export type EERCHookResult = {
   isConverter: boolean;
   publicKey: bigint[];
   auditorAddress: `0x${string}`;
+  owner: string;
   auditorPublicKey: bigint[];
   isAuditorKeySet: boolean;
   name: string;
@@ -87,6 +88,7 @@ export interface IEERCState {
   isConverter: boolean;
   isInitialized: boolean;
   auditorPublicKey: bigint[];
+  owner: string;
   name: string;
   symbol: string;
   registrarAddress: string;
