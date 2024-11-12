@@ -1,11 +1,10 @@
-import { type Log, decodeFunctionData, isAddress } from "viem";
+import { type Log, isAddress } from "viem";
 import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { BSGS } from "./crypto/bsgs";
 import { FF } from "./crypto/ff";
 import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
 import { Poseidon } from "./crypto/poseidon";
-import { Scalar } from "./crypto/scalar";
 import type { AmountPCT, EGCT, Point } from "./crypto/types";
 import { type IProof, logMessage } from "./helpers";
 import type {
@@ -17,6 +16,9 @@ import {
   BURN_USER,
   ENCRYPTED_ERC_ABI,
   MESSAGES,
+  PRIVATE_BURN_EVENT,
+  PRIVATE_MINT_EVENT,
+  PRIVATE_TRANSFER_EVENT,
   REGISTRAR_ABI,
   SNARK_FIELD_SIZE,
 } from "./utils";
@@ -118,16 +120,14 @@ export class EERC {
    */
   public async setContractAuditorPublicKey(address: `0x${string}`) {
     try {
-      const transactionHash = await this.wallet.writeContract({
+      return await this.wallet.writeContract({
         abi: this.encryptedErcAbi,
         address: this.contractAddress,
         functionName: "setAuditorPublicKey",
         args: [address],
       });
-
-      return { transactionHash };
-    } catch {
-      throw new Error("Failed to set auditor public key!");
+    } catch (e) {
+      throw new Error("Failed to set auditor public key!", { cause: e });
     }
   }
 
@@ -761,7 +761,6 @@ export class EERC {
 
   async auditorDecrypt(): Promise<DecryptedTransaction[]> {
     if (!this.decryptionKey) throw new Error("Missing decryption key!");
-    const privateKey = formatKeyForCurve(this.decryptionKey);
 
     const currentAuditor = await this.client.readContract({
       address: this.contractAddress,
@@ -777,114 +776,70 @@ export class EERC {
       throw new Error("Only the auditor can decrypt the transactions");
     }
 
-    const auditorChangeEvent = {
-      anonymous: false,
-      inputs: [
-        {
-          indexed: true,
-          internalType: "address",
-          name: "oldAuditor",
-          type: "address",
-        },
-        {
-          indexed: true,
-          internalType: "address",
-          name: "newAuditor",
-          type: "address",
-        },
-      ],
-      name: "AuditorChanged",
-    };
-
     type NamedEvents = Log & {
       eventName: string;
       args: { auditorPCT: bigint[] };
     };
 
-    const result: DecryptedTransaction[] = [];
+    const result: (DecryptedTransaction & { blockNumber: bigint })[] = [];
 
     try {
       const currentBlock = await this.client.getBlockNumber();
 
-      const startBlockNumber = (
-        await this.client.getLogs({
-          address: this.contractAddress,
-          event: { ...auditorChangeEvent, type: "event" },
-          fromBlock: "earliest",
-          toBlock: "latest",
-          args: {
-            newAuditor: this.wallet.account.address,
-          },
-        })
-      )[0].blockNumber;
-
       logMessage("Fetching logs...");
-      const events = ENCRYPTED_ERC_ABI.filter(
-        (element) => element.type === "event",
-      );
 
-      // get last 50 blocks logs
-      const logs = (await this.client.getLogs({
-        address: this.contractAddress,
-        fromBlock: startBlockNumber,
-        toBlock: currentBlock,
-        events,
-      })) as NamedEvents[];
+      const logs: NamedEvents[] = [];
+      for (const event of [
+        PRIVATE_BURN_EVENT,
+        PRIVATE_MINT_EVENT,
+        PRIVATE_TRANSFER_EVENT,
+      ]) {
+        const fetchedLogs = (await this.client.getLogs({
+          address: this.contractAddress,
+          fromBlock: currentBlock < 100 ? 0n : currentBlock - 100n,
+          toBlock: currentBlock,
+          event: {
+            ...event,
+            type: "event",
+          },
+          args: {
+            auditorAddress: this.wallet.account.address,
+          },
+        })) as NamedEvents[];
+
+        logs.push(...fetchedLogs);
+      }
 
       logMessage(`Fetched ${logs.length} logs from the contract`);
 
       for (const log of logs) {
-        if (!log.transactionHash) return [];
+        if (!log.transactionHash) continue;
+
         const tx = await this.client.getTransaction({
           hash: log.transactionHash,
         });
 
-        const pct = log?.args?.auditorPCT as bigint[];
-        if (!pct || pct?.length !== 7) continue;
+        const auditorPCT = log?.args?.auditorPCT as bigint[];
+        if (!auditorPCT || auditorPCT?.length !== 7) continue;
 
-        const cipher = pct.slice(0, 4) as bigint[];
-        const authKey = pct.slice(-3, -1) as Point;
-        const nonce = pct[pct.length - 1] as bigint;
-        const length = 2; // decrypted length
-
-        const [whole, fractional] = this.poseidon.processPoseidonDecryption({
-          privateKey,
-          authKey,
-          cipher,
-          nonce,
-          length,
-        });
-
-        const decoded = decodeFunctionData({
-          abi: ENCRYPTED_ERC_ABI,
-          data: tx.input as `0x${string}`,
-        });
-
-        const amount = Scalar.calculate(whole as bigint, fractional as bigint);
+        const decryptedAmount = this.decryptPCT(auditorPCT);
 
         result.push({
           transactionHash: log.transactionHash,
-          amount: Scalar.parseEERCBalance(amount),
+          amount: decryptedAmount.toString(),
           sender: tx.from,
-          type:
-            decoded?.functionName === "privateMint"
-              ? "Mint"
-              : decoded?.functionName === "privateBurn"
-                ? "Burn"
-                : "Transfer",
-          receiver:
-            decoded?.functionName === "transfer"
-              ? (decoded?.args?.[0] as `0x${string}`) ?? null
-              : decoded?.functionName === "privateMint"
-                ? (decoded?.args?.[0] as `0x${string}`) ?? null
-                : null,
+          type: log.eventName,
+          receiver: tx.to,
+          blockNumber: tx.blockNumber,
         });
       }
 
       logMessage(`Transactions decrypted: ${result.length}`);
 
       // reverse the array to get the latest transactions first
-      return result.reverse();
+      return result.sort(
+        (a, b) => Number(a.blockNumber) - Number(b.blockNumber),
+      ) as DecryptedTransaction[];
     } catch (e) {
       throw new Error(e as string);
     }

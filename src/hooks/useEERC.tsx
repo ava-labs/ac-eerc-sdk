@@ -137,7 +137,7 @@ export function useEERC(
     ...eercContract,
     functionName: "auditorPublicKey",
     args: [],
-    enabled: Boolean(contractAddress),
+    enabled: Boolean(contractAddress) && Boolean(eerc),
     watch: true,
   });
 

@@ -64,7 +64,7 @@ export function useEncryptedBalance(
 
   useEffect(() => {
     let mounted = true;
-    if (!contractBalance || !eerc) return;
+    if (!contractBalance || !eerc || !eerc.isDecryptionKeySet) return;
 
     const contractBalanceArray = contractBalance as bigint[];
     const elGamalCipherText = contractBalanceArray[0] as unknown as EGCT;

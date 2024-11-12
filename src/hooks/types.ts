@@ -54,9 +54,9 @@ export type EERCHookResult = {
   prove: IProveFunction;
   refetchEercUser: () => void;
   refetchAuditor: () => void;
-  setContractAuditorPublicKey: (address: `0x${string}`) => Promise<{
-    transactionHash: `0x${string}`;
-  }>;
+  setContractAuditorPublicKey: (
+    address: `0x${string}`,
+  ) => Promise<`0x${string}`>;
 };
 
 export type UseEncryptedBalanceHookResult = {
