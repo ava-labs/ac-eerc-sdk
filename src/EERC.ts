@@ -24,7 +24,7 @@ import {
 
 export class EERC {
   private client: PublicClient;
-  private wallet: WalletClient;
+  public wallet: WalletClient;
 
   public curve: BabyJub;
   public field: FF;
