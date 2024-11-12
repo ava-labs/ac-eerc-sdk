@@ -436,12 +436,6 @@ export class EERC {
       const newBalance = decryptedBalance - amount;
       const privateKey = formatKeyForCurve(this.decryptionKey);
 
-      // 1. encrypt the withdraw amount with user public key
-      const { cipher: encryptedAmount } = await this.curve.encryptMessage(
-        this.publicKey as Point,
-        amount,
-      );
-
       // 2. create pct for the user with the new balance
       const {
         cipher: senderCipherText,
@@ -466,8 +460,6 @@ export class EERC {
       const publicInputs = [
         ...this.publicKey,
         ...encryptedBalance,
-        ...encryptedAmount.c1,
-        ...encryptedAmount.c2,
         ...auditorPublicKey,
         ...auditorCipherText,
         ...auditorAuthKey,

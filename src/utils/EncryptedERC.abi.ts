@@ -999,9 +999,9 @@ export const ENCRYPTED_ERC_ABI = [
         type: "uint256[8]",
       },
       {
-        internalType: "uint256[20]",
+        internalType: "uint256[16]",
         name: "input",
-        type: "uint256[20]",
+        type: "uint256[16]",
       },
       {
         internalType: "uint256[7]",
