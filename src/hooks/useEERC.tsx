@@ -36,6 +36,10 @@ export function useEERC(
     isRegistered: false,
     isAllDataFetched: false,
     owner: "",
+    hasBeenAuditor: {
+      isChecking: false,
+      isAuditor: false,
+    },
   });
 
   const updateEercState = useCallback(
@@ -189,6 +193,38 @@ export function useEERC(
       enabled: Boolean(contractAddress) && Boolean(eerc),
       watch: true,
     }) as { data: `0x${string}`; isFetched: boolean };
+
+  /**
+   * check if user has been auditor
+   */
+  const checkIsAuditor = useCallback(async () => {
+    if (!eerc) return;
+
+    try {
+      updateEercState({
+        hasBeenAuditor: { isChecking: true, isAuditor: false },
+      });
+      const isAuditor = await eerc.hasBeenAuditor();
+      updateEercState({
+        hasBeenAuditor: { isChecking: false, isAuditor },
+      });
+    } catch (error) {
+      setEercState((prevState) => ({
+        ...prevState,
+        hasBeenAuditor: {
+          ...prevState.hasBeenAuditor,
+          isChecking: false,
+        },
+      }));
+      logMessage(`Failed to check is auditor: ${error}`);
+    }
+  }, [eerc, updateEercState]);
+
+  useEffect(() => {
+    if (eerc) {
+      checkIsAuditor();
+    }
+  }, [eerc, checkIsAuditor]);
 
   // check is all data fetched
   useEffect(() => {
@@ -398,6 +434,7 @@ export function useEERC(
     symbol: eercState.symbol, // EERC symbol, (only for stand-alone version)
     shouldGenerateDecryptionKey,
     areYouAuditor,
+    hasBeenAuditor: eercState.hasBeenAuditor,
 
     // functions
     register, // register user to the contract

@@ -736,21 +736,93 @@ export class EERC {
     return amount;
   }
 
+  /**
+   * @dev function checks if user has been auditor before from contract event logs
+   */
+  async hasBeenAuditor(): Promise<boolean> {
+    const auditorChangedEvent = {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: true,
+          internalType: "address",
+          name: "oldAuditor",
+          type: "address",
+        },
+        {
+          indexed: true,
+          internalType: "address",
+          name: "newAuditor",
+          type: "address",
+        },
+      ],
+      name: "AuditorChanged",
+    };
+
+    type NamedEvents = Log & {
+      eventName: string;
+      args: {
+        oldAuditor: `0x${string}`;
+        newAuditor: `0x${string}`;
+      };
+    };
+
+    const currentBlock = await this.client.getBlockNumber();
+    const BOUND = 1000n;
+
+    // Fetch logs where the user was the oldAuditor
+    const logs = (await this.client.getLogs({
+      address: this.contractAddress,
+      event: { ...auditorChangedEvent, type: "event" },
+      fromBlock: currentBlock > BOUND ? currentBlock - BOUND : 0n,
+      toBlock: currentBlock,
+    })) as NamedEvents[];
+
+    // filter that only has oldAuditor and newAuditor is the user address
+    const filteredLogs = logs.filter(
+      (log) =>
+        log.args.oldAuditor.toLowerCase() ===
+          this.wallet.account.address.toLowerCase() ||
+        log.args.newAuditor.toLowerCase() ===
+          this.wallet.account.address.toLowerCase(),
+    );
+
+    let currentStart = null;
+
+    for (const log of filteredLogs) {
+      const { oldAuditor, newAuditor } = log.args;
+
+      if (
+        newAuditor.toLowerCase() === this.wallet.account.address.toLowerCase()
+      ) {
+        currentStart = log.blockNumber;
+      } else if (
+        oldAuditor.toLowerCase() ===
+          this.wallet.account.address.toLowerCase() &&
+        currentStart !== null
+      ) {
+        return true;
+      }
+    }
+
+    if (currentStart !== null) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * function to decrypt the transactions of the auditor
+   * @returns decrypted transactions
+   *
+   * @TODO: hasBeenAuditor?
+   */
   async auditorDecrypt(): Promise<DecryptedTransaction[]> {
     if (!this.decryptionKey) throw new Error("Missing decryption key!");
-
-    const currentAuditor = await this.client.readContract({
-      address: this.contractAddress,
-      abi: this.encryptedErcAbi,
-      functionName: "auditor",
-      args: [],
-    });
-
-    if (
-      (currentAuditor as `0x${string}`).toLowerCase() !==
-      this.wallet.account.address.toLowerCase()
-    ) {
-      throw new Error("Only the auditor can decrypt the transactions");
+    const isAuditor = await this.hasBeenAuditor();
+    if (!isAuditor) {
+      throw new Error("User is not an auditor");
     }
 
     type NamedEvents = Log & {
@@ -762,6 +834,7 @@ export class EERC {
 
     try {
       const currentBlock = await this.client.getBlockNumber();
+      const BOUND = 1000n;
 
       logMessage("Fetching logs...");
 
@@ -773,7 +846,7 @@ export class EERC {
       ]) {
         const fetchedLogs = (await this.client.getLogs({
           address: this.contractAddress,
-          fromBlock: currentBlock < 100 ? 0n : currentBlock - 100n,
+          fromBlock: currentBlock > BOUND ? currentBlock - BOUND : 0n,
           toBlock: currentBlock,
           event: {
             ...event,
@@ -815,7 +888,7 @@ export class EERC {
 
       // reverse the array to get the latest transactions first
       return result.sort(
-        (a, b) => Number(a.blockNumber) - Number(b.blockNumber),
+        (a, b) => Number(b.blockNumber) - Number(a.blockNumber),
       ) as DecryptedTransaction[];
     } catch (e) {
       throw new Error(e as string);

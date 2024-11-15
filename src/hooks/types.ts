@@ -44,6 +44,10 @@ export type EERCHookResult = {
   symbol: string;
   shouldGenerateDecryptionKey: boolean;
   areYouAuditor: boolean;
+  hasBeenAuditor: {
+    isChecking: boolean;
+    isAuditor: boolean;
+  };
   generateDecryptionKey: () => Promise<string>;
   register: () => Promise<{ key: string; transactionHash: string }>;
   auditorDecrypt: () => Promise<DecryptedTransaction[]>;
@@ -94,4 +98,8 @@ export interface IEERCState {
   registrarAddress: string;
   isRegistered: boolean;
   isAllDataFetched: boolean;
+  hasBeenAuditor: {
+    isChecking: boolean;
+    isAuditor: boolean;
+  };
 }
