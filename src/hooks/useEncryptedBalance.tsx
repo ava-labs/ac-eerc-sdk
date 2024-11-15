@@ -194,7 +194,8 @@ export function useEncryptedBalance(
   const deposit = useCallback(
     (amount: bigint) => {
       try {
-        if (!eerc || !tokenAddress) throw new Error("EERC not initialized");
+        if (!eerc) throw new Error("EERC not initialized");
+        if (!tokenAddress) throw new Error("Token address is not set");
 
         return eerc.deposit(amount, tokenAddress);
       } catch (error) {
@@ -213,7 +214,8 @@ export function useEncryptedBalance(
   const withdraw = useCallback(
     (amount: bigint) => {
       try {
-        if (!eerc || !tokenAddress) throw new Error("EERC not initialized");
+        if (!eerc) throw new Error("EERC not initialized");
+        if (!tokenAddress) throw new Error("Token address is not set");
 
         return eerc.withdraw(
           amount,
