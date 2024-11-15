@@ -3,10 +3,11 @@ import { type IProof, logMessage } from "../helpers";
 import { wasmExecBase64 } from "./worker";
 
 type useProverProps = {
-  url: string;
+  transferURL: string;
+  multiWasmURL: string;
 };
 
-export const useProver = ({ url }: useProverProps) => {
+export const useProver = ({ transferURL, multiWasmURL }: useProverProps) => {
   const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
@@ -93,7 +94,15 @@ export const useProver = ({ url }: useProverProps) => {
           if (event.data.error) {
             reject(new Error(event.data.error));
           } else {
-            resolve(JSON.parse(event.data) as IProof);
+            // resolve(JSON.parse(event.data) as WasmProof);
+            const proof = JSON.parse(event.data) as {
+              a: string[];
+              b: string[][];
+              c: string[];
+            };
+            resolve({
+              proof: [...proof.a, ...proof.b.flat(), ...proof.c],
+            });
           }
 
           // Remove the event listener after the message is received
@@ -108,13 +117,13 @@ export const useProver = ({ url }: useProverProps) => {
 
         // Send the necessary data to the worker
         workerRef.current?.postMessage({
-          wasmUrl: url,
+          wasmUrl: proofType === "TRANSFER" ? transferURL : multiWasmURL,
           funcArgs: data,
           proofType,
         });
       });
     },
-    [url], // Only recreate the function when `url` changes
+    [transferURL, multiWasmURL], // Only recreate the function when `url` changes
   );
 
   return {

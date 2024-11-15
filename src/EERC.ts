@@ -192,17 +192,14 @@ export class EERC {
       }
 
       // generate proof for the transaction
-      const { proof, publicInputs } = await this.proveFunc(
-        JSON.stringify(input),
-        "REGISTER",
-      );
+      const { proof } = await this.proveFunc(JSON.stringify(input), "REGISTER");
 
       logMessage("Sending transaction");
       const transactionHash = await this.wallet.writeContract({
         abi: this.registrarAbi,
         address: this.registrarAddress,
         functionName: "register",
-        args: [proof, publicInputs],
+        args: [proof, input.publicInputs],
       });
 
       this.decryptionKey = key;
@@ -512,7 +509,7 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
-  ): Promise<IProof & { senderBalancePCT: string[] }> {
+  ): Promise<IProof & { publicInputs: string[]; senderBalancePCT: string[] }> {
     try {
       this.validateAddress(to);
       this.validateAmount(amount, decryptedBalance);

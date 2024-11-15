@@ -19,7 +19,10 @@ export function useEERC(
   client: PublicClient,
   wallet: WalletClient,
   contractAddress: string,
-  wasmUrl: string,
+  urls: {
+    transferURL: string;
+    multiWasmURL: string;
+  },
   decryptionKey?: string,
 ): EERCHookResult {
   const [eerc, setEerc] = useState<EERC | undefined>(undefined);
@@ -43,7 +46,12 @@ export function useEERC(
 
   // use prover
   const { prove } = useProver({
-    url: wasmUrl.startsWith("/") ? `${location.origin}/${wasmUrl}` : wasmUrl,
+    transferURL: urls.transferURL.startsWith("/")
+      ? `${location.origin}/${urls.transferURL}`
+      : urls.transferURL,
+    multiWasmURL: urls.multiWasmURL.startsWith("/")
+      ? `${location.origin}/${urls.multiWasmURL}`
+      : urls.multiWasmURL,
   });
 
   const eercContract = useMemo(
