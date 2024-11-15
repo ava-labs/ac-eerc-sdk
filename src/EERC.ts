@@ -1,4 +1,4 @@
-import { type Log, isAddress } from "viem";
+import { type Log, decodeFunctionData, isAddress } from "viem";
 import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { FF } from "./crypto/ff";
@@ -873,13 +873,20 @@ export class EERC {
         if (!auditorPCT || auditorPCT?.length !== 7) continue;
 
         const decryptedAmount = this.decryptPCT(auditorPCT);
+        const decodedInputs = decodeFunctionData({
+          abi: this.encryptedErcAbi,
+          data: tx.input,
+        });
 
         result.push({
           transactionHash: log.transactionHash,
           amount: decryptedAmount.toString(),
           sender: tx.from,
           type: log.eventName.replace("Private", ""),
-          receiver: tx.to,
+          receiver:
+            decodedInputs?.functionName === "privateBurn"
+              ? tx.to
+              : (decodedInputs?.args?.[0] as `0x${string}`),
           blockNumber: tx.blockNumber,
         });
       }
