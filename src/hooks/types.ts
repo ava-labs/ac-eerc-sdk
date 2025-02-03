@@ -27,7 +27,7 @@ export type DecryptedTransaction = {
 
 export type IProveFunction = (
   data: string,
-  proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+  proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER"
 ) => Promise<IProof>;
 
 export type EERCHookResult = {
@@ -52,16 +52,17 @@ export type EERCHookResult = {
   register: () => Promise<{ key: string; transactionHash: string }>;
   auditorDecrypt: () => Promise<DecryptedTransaction[]>;
   isAddressRegistered: (
-    address: `0x${string}`,
+    address: `0x${string}`
   ) => Promise<{ isRegistered: boolean; error: string | null }>;
+  decryptAmountPCT: (pct: string[]) => bigint;
   useEncryptedBalance: (
-    tokenAddress?: `0x${string}`,
+    tokenAddress?: `0x${string}`
   ) => ReturnType<typeof useEncryptedBalance>;
   prove: IProveFunction;
   refetchEercUser: () => void;
   refetchAuditor: () => void;
   setContractAuditorPublicKey: (
-    address: `0x${string}`,
+    address: `0x${string}`
   ) => Promise<`0x${string}`>;
 };
 
@@ -73,10 +74,17 @@ export type UseEncryptedBalanceHookResult = {
   decimals: bigint;
   privateMint: (
     recipient: `0x${string}`,
-    amount: bigint,
+    amount: bigint
   ) => Promise<OperationResult>;
   privateBurn: (amount: bigint) => Promise<OperationResult>;
-  privateTransfer: (to: string, amount: bigint) => Promise<OperationResult>;
+  privateTransfer: (
+    to: string,
+    amount: bigint
+  ) => Promise<{
+    transactionHash: string;
+    receiverEncryptedAmount: string[];
+    senderEncryptedAmount: string[];
+  }>;
   withdraw: (amount: bigint) => Promise<OperationResult>;
   deposit: (amount: bigint) => Promise<OperationResult>;
   refetchBalance: () => void;

@@ -43,7 +43,7 @@ export class EERC {
   // prove function
   public proveFunc: (
     data: string,
-    proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+    proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER"
   ) => Promise<IProof>;
 
   constructor(
@@ -53,7 +53,7 @@ export class EERC {
     registrarAddress: `0x${string}`,
     isConverter: boolean,
     proveFunc: IProveFunction,
-    decryptionKey?: string,
+    decryptionKey?: string
   ) {
     this.client = client;
     this.wallet = wallet;
@@ -134,10 +134,7 @@ export class EERC {
     }
 
     try {
-      const message = MESSAGES.REGISTER(
-        this.wallet.account.address,
-        this.client.chain.id,
-      );
+      const message = MESSAGES.REGISTER(this.wallet.account.address);
 
       // deriving the decryption key from the user signature
       const signature = await this.wallet.signMessage({ message });
@@ -177,7 +174,7 @@ export class EERC {
 
       {
         const contractPublicKey = await this.fetchPublicKey(
-          this.wallet.account.address,
+          this.wallet.account.address
         );
 
         // if user already registered return the key
@@ -222,7 +219,7 @@ export class EERC {
   async privateMint(
     recipient: `0x${string}`,
     mintAmount: bigint,
-    auditorPublicKey: Point,
+    auditorPublicKey: Point
   ): Promise<OperationResult> {
     if (this.isConverter) throw new Error("Not allowed for converter!");
     this.validateAddress(recipient);
@@ -280,7 +277,7 @@ export class EERC {
 
     const { proof } = await this.proveFunc(
       JSON.stringify({ privateInputs, publicInputs }),
-      "MINT",
+      "MINT"
     );
 
     // write the transaction to the contract
@@ -308,7 +305,7 @@ export class EERC {
     amount: bigint,
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
-    auditorPublicKey: bigint[],
+    auditorPublicKey: bigint[]
   ) {
     if (this.isConverter) throw new Error("Not allowed for converter!");
     this.validateAmount(amount, decryptedBalance);
@@ -320,7 +317,7 @@ export class EERC {
         amount,
         encryptedBalance,
         decryptedBalance,
-        auditorPublicKey,
+        auditorPublicKey
       );
 
     logMessage("Sending transaction");
@@ -351,8 +348,12 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
-    tokenAddress?: string,
-  ): Promise<OperationResult> {
+    tokenAddress?: string
+  ): Promise<{
+    transactionHash: string;
+    receiverEncryptedAmount: string[];
+    senderEncryptedAmount: string[];
+  }> {
     this.validateAddress(to);
     this.validateAmount(amount, decryptedBalance);
 
@@ -362,14 +363,19 @@ export class EERC {
     }
 
     logMessage("Transferring encrypted tokens");
-    const { proof, publicInputs, senderBalancePCT } =
-      await this.generateTransferProof(
-        to,
-        amount,
-        encryptedBalance,
-        decryptedBalance,
-        auditorPublicKey,
-      );
+    const {
+      proof,
+      publicInputs,
+      senderBalancePCT,
+      receiverEncryptedAmount,
+      senderEncryptedAmount,
+    } = await this.generateTransferProof(
+      to,
+      amount,
+      encryptedBalance,
+      decryptedBalance,
+      auditorPublicKey
+    );
 
     logMessage("Sending transaction");
     const transactionHash = await this.wallet.writeContract({
@@ -379,7 +385,7 @@ export class EERC {
       args: [to, tokenId, proof, publicInputs, senderBalancePCT],
     });
 
-    return { transactionHash };
+    return { transactionHash, receiverEncryptedAmount, senderEncryptedAmount };
   }
 
   // function to deposit tokens to the contract
@@ -390,7 +396,7 @@ export class EERC {
     // check if the user has enough approve amount
     const approveAmount = await this.fetchUserApprove(
       this.wallet.account.address,
-      tokenAddress,
+      tokenAddress
     );
 
     if (approveAmount < amount) {
@@ -421,7 +427,7 @@ export class EERC {
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
-    tokenAddress: string,
+    tokenAddress: string
   ): Promise<OperationResult> {
     // only work if eerc is converter
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
@@ -478,7 +484,7 @@ export class EERC {
 
       const { proof } = await this.proveFunc(
         JSON.stringify({ privateInputs, publicInputs }),
-        "WITHDRAW",
+        "WITHDRAW"
       );
 
       const transactionHash = await this.wallet.writeContract({
@@ -508,8 +514,15 @@ export class EERC {
     amount: bigint,
     encryptedBalance: bigint[],
     decryptedBalance: bigint,
-    auditorPublicKey: bigint[],
-  ): Promise<IProof & { publicInputs: string[]; senderBalancePCT: string[] }> {
+    auditorPublicKey: bigint[]
+  ): Promise<
+    IProof & {
+      publicInputs: string[];
+      senderBalancePCT: string[];
+      receiverEncryptedAmount: string[];
+      senderEncryptedAmount: string[];
+    }
+  > {
     try {
       this.validateAddress(to);
       this.validateAmount(amount, decryptedBalance);
@@ -523,7 +536,7 @@ export class EERC {
       // 1. encrypt the transfer amount for sender
       const { cipher: encryptedAmountSender } = await this.curve.encryptMessage(
         this.publicKey as Point,
-        amount,
+        amount
       );
 
       // 2. encrypt the transfer amount for receiver
@@ -592,8 +605,18 @@ export class EERC {
 
       const { proof } = await this.proveFunc(
         JSON.stringify({ privateInputs, publicInputs }),
-        "TRANSFER",
+        "TRANSFER"
       );
+
+      // and also encrypts the amount of the transfer with sender public key for transaction history
+      const {
+        cipher: senderAmountCiphertext,
+        nonce: senderAmountPoseidonNonce,
+        authKey: senderAmountAuthKey,
+      } = await this.poseidon.processPoseidonEncryption({
+        inputs: [amount],
+        publicKey: this.publicKey as Point,
+      });
 
       return {
         proof,
@@ -602,6 +625,16 @@ export class EERC {
           ...senderCipherText,
           ...senderAuthKey,
           senderPoseidonNonce,
+        ].map(String),
+        receiverEncryptedAmount: [
+          ...receiverCipherText,
+          ...receiverAuthKey,
+          receiverPoseidonNonce,
+        ].map(String),
+        senderEncryptedAmount: [
+          ...senderAmountCiphertext,
+          ...senderAmountAuthKey,
+          senderAmountPoseidonNonce,
         ].map(String),
       };
     } catch (e) {
@@ -674,7 +707,7 @@ export class EERC {
   calculateTotalBalance(
     eGCT: EGCT,
     amountPCTs: AmountPCT[],
-    balancePCT: bigint[],
+    balancePCT: bigint[]
   ) {
     const privateKey = formatKeyForCurve(this.decryptionKey);
 
@@ -698,7 +731,7 @@ export class EERC {
       });
       const expectedPoint = this.curve.mulWithScalar(
         this.curve.Base8,
-        totalBalance,
+        totalBalance
       );
 
       if (
@@ -717,7 +750,7 @@ export class EERC {
    * @param pct pct array
    * @returns decrypted
    */
-  decryptPCT(pct: bigint[]) {
+  public decryptPCT(pct: bigint[]) {
     const privateKey = formatKeyForCurve(this.decryptionKey);
 
     const cipher = pct.slice(0, 4) as bigint[];
@@ -784,7 +817,7 @@ export class EERC {
         log.args.oldAuditor.toLowerCase() ===
           this.wallet.account.address.toLowerCase() ||
         log.args.newAuditor.toLowerCase() ===
-          this.wallet.account.address.toLowerCase(),
+          this.wallet.account.address.toLowerCase()
     );
 
     let currentStart = null;
@@ -895,7 +928,7 @@ export class EERC {
 
       // reverse the array to get the latest transactions first
       return result.sort(
-        (a, b) => Number(b.blockNumber) - Number(a.blockNumber),
+        (a, b) => Number(b.blockNumber) - Number(a.blockNumber)
       ) as DecryptedTransaction[];
     } catch (e) {
       throw new Error(e as string);

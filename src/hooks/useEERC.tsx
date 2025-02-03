@@ -220,6 +220,21 @@ export function useEERC(
     }
   }, [eerc, updateEercState]);
 
+  /**
+   * function decrypts the pct
+   * @param pct - pct to decrypt
+   * @returns decrypted amount
+   */
+  const decryptAmountPCT = useCallback(
+    (pct: string[]) => {
+      if (!eerc) throw new Error("EERC not initialized");
+      if (pct.length !== 7) throw new Error("PCT length is invalid");
+
+      return eerc.decryptPCT(pct.map(BigInt));
+    },
+    [eerc],
+  );
+
   useEffect(() => {
     if (eerc) {
       checkIsAuditor();
@@ -442,6 +457,7 @@ export function useEERC(
     isAddressRegistered, // function for checking address is registered or not
     generateDecryptionKey, // generate decryption key
     setContractAuditorPublicKey, // set contract auditor public key
+    decryptAmountPCT,
 
     // refetch
     refetchEercUser,

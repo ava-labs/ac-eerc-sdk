@@ -4,8 +4,8 @@ export const SHA_256_MAX_DIGEST =
   115792089237316195423570985008687907853269984665640564039457584007913129639936n;
 
 export const MESSAGES = {
-  REGISTER: (user: string, chainId: number) =>
-    `AvaCloud\nRegistering user with\n Address:${user.toLowerCase()}\nChain ID: ${chainId.toString()}`,
+  REGISTER: (user: string) =>
+    `AvaCloud\nRegistering user with\n Address:${user.toLowerCase()}`,
 };
 
 // burn user is used for private burn transactions
