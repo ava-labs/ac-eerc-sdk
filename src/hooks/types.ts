@@ -54,7 +54,6 @@ export type EERCHookResult = {
   isAddressRegistered: (
     address: `0x${string}`
   ) => Promise<{ isRegistered: boolean; error: string | null }>;
-  decryptAmountPCT: (pct: string[]) => bigint;
   useEncryptedBalance: (
     tokenAddress?: `0x${string}`
   ) => ReturnType<typeof useEncryptedBalance>;
