@@ -227,7 +227,7 @@ export class Poseidon {
       }
     };
 
-    if (length > 3) {
+    if (length % 3) {
       if (length % 3 === 2) {
         checkEqual(
           msg[msg.length - 1],
