@@ -16,7 +16,7 @@ export class Poseidon {
     this.field = field;
     this.curve = curve;
     this.two128 = this.field.newElement(
-      "340282366920938463463374607431768211456"
+      "340282366920938463463374607431768211456",
     );
   }
 
@@ -67,7 +67,7 @@ export class Poseidon {
 
     const poseidonAuthKey = this.curve.mulWithScalar(
       this.curve.Base8,
-      encryptionRandom
+      encryptionRandom,
     );
 
     return {
@@ -111,7 +111,7 @@ export class Poseidon {
     let state = ss.map((e) => this.field.newElement(e));
     for (let r = 0; r < nRoundsF + nRoundsP; r++) {
       state = state.map((a, i) =>
-        this.field.add(a, BigInt(C_RAW[t - 2][r * t + i]))
+        this.field.add(a, BigInt(C_RAW[t - 2][r * t + i])),
       );
 
       if (r < nRoundsF / 2 || r >= nRoundsF / 2 + nRoundsP) {
@@ -124,8 +124,8 @@ export class Poseidon {
         state.reduce(
           (acc, a, j) =>
             this.field.add(acc, this.field.mul(BigInt(M_RAW[t - 2][i][j]), a)),
-          this.field.zero
-        )
+          this.field.zero,
+        ),
       );
     }
     return state.map((e) => this.field.normalize(e));
@@ -137,7 +137,7 @@ export class Poseidon {
   private poseidonEncrypt(
     inputs: bigint[],
     key: Point,
-    nonce: bigint
+    nonce: bigint,
   ): bigint[] {
     const msg = inputs.map((input) => this.field.newElement(input));
 
@@ -159,8 +159,8 @@ export class Poseidon {
         this.field.newElement(nonce),
         this.field.mul(
           this.field.newElement(String(inputs.length)),
-          this.two128
-        )
+          this.two128,
+        ),
       ),
     ];
 
@@ -193,7 +193,7 @@ export class Poseidon {
     cipher: bigint[],
     sharedKey: Point,
     nonce: bigint,
-    length: number
+    length: number,
   ): bigint[] {
     // initial state
     let state = [
@@ -202,7 +202,7 @@ export class Poseidon {
       this.field.newElement(sharedKey[1]),
       this.field.add(
         this.field.newElement(nonce),
-        this.field.mul(this.field.newElement(length.toString()), this.two128)
+        this.field.mul(this.field.newElement(length.toString()), this.two128),
       ),
     ];
 
@@ -233,20 +233,20 @@ export class Poseidon {
           msg[msg.length - 1],
           this.field.zero,
           this.field,
-          "The last element of the message must be 0"
+          "The last element of the message must be 0",
         );
       } else if (length % 3 === 1) {
         checkEqual(
           msg[msg.length - 1],
           this.field.zero,
           this.field,
-          "The last element of the message must be 0"
+          "The last element of the message must be 0",
         );
         checkEqual(
           msg[msg.length - 2],
           this.field.zero,
           this.field,
-          "The second to last element of the message must be 0"
+          "The second to last element of the message must be 0",
         );
       }
     }
@@ -257,7 +257,7 @@ export class Poseidon {
       cipher[cipher.length - 1],
       state[1],
       this.field,
-      "Invalid ciphertext"
+      "Invalid ciphertext",
     );
 
     return msg.slice(0, length);

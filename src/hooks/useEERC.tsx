@@ -23,7 +23,7 @@ export function useEERC(
     transferURL: string;
     multiWasmURL: string;
   },
-  decryptionKey?: string
+  decryptionKey?: string,
 ): EERCHookResult {
   const [eerc, setEerc] = useState<EERC | undefined>(undefined);
   const [eercState, setEercState] = useState<IEERCState>({
@@ -45,7 +45,7 @@ export function useEERC(
   const updateEercState = useCallback(
     (updates: Partial<IEERCState>) =>
       setEercState((prevState) => ({ ...prevState, ...updates })),
-    []
+    [],
   );
 
   // use prover
@@ -63,7 +63,7 @@ export function useEERC(
       address: contractAddress as `0x${string}`,
       abi: ENCRYPTED_ERC_ABI as Abi,
     }),
-    [contractAddress]
+    [contractAddress],
   );
 
   const registrarContract = useMemo(
@@ -71,7 +71,7 @@ export function useEERC(
       address: eercState.registrarAddress as `0x${string}`,
       abi: REGISTRAR_ABI as Abi,
     }),
-    [eercState.registrarAddress]
+    [eercState.registrarAddress],
   );
 
   /**
@@ -220,21 +220,6 @@ export function useEERC(
     }
   }, [eerc, updateEercState]);
 
-  // /**
-  //  * function decrypts the pct
-  //  * @param pct - pct to decrypt
-  //  * @returns decrypted amount
-  //  */
-  // const decryptAmountPCT = useCallback(
-  //   (pct: string[]) => {
-  //     if (!eerc) throw new Error("EERC not initialized");
-  //     if (pct.length !== 7) throw new Error("PCT length is invalid");
-
-  //     return eerc.decryptPCT(pct.map(BigInt));
-  //   },
-  //   [eerc],
-  // );
-
   useEffect(() => {
     if (eerc) {
       checkIsAuditor();
@@ -291,7 +276,7 @@ export function useEERC(
           eercState.registrarAddress as `0x${string}`,
           eercState.isConverter,
           prove,
-          decryptionKey
+          decryptionKey,
         );
 
         if (mounted) {
@@ -392,7 +377,7 @@ export function useEERC(
         throw new Error("Failed to check address registration");
       }
     },
-    [eerc]
+    [eerc],
   );
 
   /**
@@ -428,7 +413,7 @@ export function useEERC(
       if (!eerc) throw new Error("EERC not initialized");
       return eerc.setContractAuditorPublicKey(address);
     },
-    [eerc]
+    [eerc],
   );
 
   return {
@@ -443,7 +428,7 @@ export function useEERC(
     isAuditorKeySet: Boolean(
       eercState.auditorPublicKey.length > 0 &&
         eercState.auditorPublicKey[0] !== 0n &&
-        eercState.auditorPublicKey[1] !== 0n
+        eercState.auditorPublicKey[1] !== 0n,
     ),
     name: eercState.name, // EERC name, (only for stand-alone version)
     symbol: eercState.symbol, // EERC symbol, (only for stand-alone version)
