@@ -43,7 +43,7 @@ export const getPrivateKeyFromSignature = (signature: string): string => {
 };
 
 export const grindKey = (seed: string): string => {
-  const limit = SNARK_FIELD_SIZE;
+  const limit = SNARK_FIELD_SIZE * 8n;
   const maxAllowedValue = SHA_256_MAX_DIGEST - (SHA_256_MAX_DIGEST % limit);
 
   let i = 0;
@@ -73,7 +73,7 @@ const padString = (
   str: string,
   length: number,
   toLeft: boolean,
-  padding = "0",
+  padding = "0"
 ) => {
   const diff = length - str.length;
   let result = str;
