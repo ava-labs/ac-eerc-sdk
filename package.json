@@ -1,11 +1,15 @@
 {
   "name": "@avalabs/ac-eerc-sdk",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "README.md", "package.json"],
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
   "devDependencies": {
     "@babel/core": "7.4.0",
     "@babel/preset-env": "7.1.6",
