@@ -43,7 +43,8 @@ export const getPrivateKeyFromSignature = (signature: string): string => {
 };
 
 export const grindKey = (seed: string): string => {
-  const limit = SNARK_FIELD_SIZE * 8n;
+  const limit =
+    21888242871839275222246405745257275088614511777268538073601725287587578984328n;
   const maxAllowedValue = SHA_256_MAX_DIGEST - (SHA_256_MAX_DIGEST % limit);
 
   let i = 0;
