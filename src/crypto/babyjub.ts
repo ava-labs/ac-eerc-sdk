@@ -1,4 +1,4 @@
-import { SNARK_FIELD_SIZE } from "../utils";
+import { SNARK_FIELD_SIZE, SUB_GROUP_ORDER } from "../utils";
 import type { FF } from "./ff";
 import { Scalar } from "./scalar";
 import type { ElGamalCipherText, Point } from "./types";
@@ -27,17 +27,10 @@ export class BabyJub {
   }
 
   /**
-   * returns the sub order of the curve
-   */
-  static subOrder() {
-    return Scalar.shiftRight(BabyJub.order(), 3);
-  }
-
-  /**
    * generates and returns a random scalar in the field
    */
   static async generateRandomValue(): Promise<bigint> {
-    const lowerBound = SNARK_FIELD_SIZE / 2n;
+    const lowerBound = SUB_GROUP_ORDER / 2n;
 
     let rand: bigint;
     do {
@@ -45,7 +38,7 @@ export class BabyJub {
       rand = BigInt(`0x${Buffer.from(randBytes).toString("hex")}`);
     } while (rand < lowerBound);
 
-    return rand % SNARK_FIELD_SIZE;
+    return rand % SUB_GROUP_ORDER;
   }
 
   /**
@@ -179,7 +172,7 @@ export class BabyJub {
     publicKey: Point,
     message: Point,
   ): Promise<{ cipher: ElGamalCipherText; random: bigint }> {
-    const random = (await BabyJub.generateRandomValue()) % BigInt(2 ** 253);
+    const random = await BabyJub.generateRandomValue();
     const c1 = this.mulWithScalar(this.Base8, random);
     const pky = this.mulWithScalar(publicKey, random);
     const c2 = this.addPoints(message, pky);
