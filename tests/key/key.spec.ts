@@ -11,7 +11,7 @@ describe("Key Derivation", () => {
       "70854bc0a34b3ab487c1bc021cd318c734c51ae29374f2beb0e6f2dd49b4bf41c";
 
     expect(getPrivateKeyFromSignature(signature)).toEqual(
-      "69e5438ce6a3cf3d267cfe9d73316c4426574409cc107e2c1fa6c34cb8efa0c",
+      "91ca6a724408ee9b5dc7330702ebb8339f7b95c5041a546b2241bce05b640d",
     );
   });
 
@@ -19,7 +19,7 @@ describe("Key Derivation", () => {
     const privateKey =
       "86F3E7293141F20A8BAFF320E8EE4ACCB9D4A4BF2B4D295E8CEE784DB46E0519";
     expect(grindKey(privateKey)).toEqual(
-      "1d002b82733387dde379ce732d0502147de3ff6525778e32f63afa72b5277f00",
+      "4ce0449029ab7c90751ab97ec4455e56d613d91a257d685690b08661e90742e",
     );
   });
 

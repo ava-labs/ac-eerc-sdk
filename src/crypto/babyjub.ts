@@ -1,4 +1,4 @@
-import { SNARK_FIELD_SIZE, SUB_GROUP_ORDER } from "../utils";
+import { SUB_GROUP_ORDER } from "../utils";
 import type { FF } from "./ff";
 import { Scalar } from "./scalar";
 import type { ElGamalCipherText, Point } from "./types";
