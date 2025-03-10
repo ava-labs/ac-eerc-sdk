@@ -1,6 +1,6 @@
 import createBlakeHash from "blake-hash";
 import { sha256 } from "js-sha256";
-import { SHA_256_MAX_DIGEST } from "../utils";
+import { SHA_256_MAX_DIGEST, SUB_GROUP_ORDER } from "../utils";
 import { Scalar } from "./scalar";
 
 /**
@@ -43,8 +43,7 @@ export const getPrivateKeyFromSignature = (signature: string): string => {
 };
 
 export const grindKey = (seed: string): string => {
-  const limit =
-    21888242871839275222246405745257275088614511777268538073601725287587578984328n;
+  const limit = SUB_GROUP_ORDER;
   const iterationLimit = 1_000;
   const maxAllowedValue = SHA_256_MAX_DIGEST - (SHA_256_MAX_DIGEST % limit);
 
@@ -79,7 +78,7 @@ const padString = (
   str: string,
   length: number,
   toLeft: boolean,
-  padding = "0"
+  padding = "0",
 ) => {
   const diff = length - str.length;
   let result = str;
