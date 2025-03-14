@@ -102,10 +102,10 @@ export function useEncryptedBalance(
         decrypted: totalBalance,
         parsed: totalBalance.toString(),
         encrypted: [
-          elGamalCipherText.c1.X,
-          elGamalCipherText.c1.Y,
-          elGamalCipherText.c2.X,
-          elGamalCipherText.c2.Y,
+          elGamalCipherText.c1.x,
+          elGamalCipherText.c1.y,
+          elGamalCipherText.c2.x,
+          elGamalCipherText.c2.y,
         ],
       }));
     }

@@ -1,3 +1,4 @@
+import { poseidon3, poseidon5 } from "poseidon-lite";
 import { type Log, decodeFunctionData, isAddress } from "viem";
 import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
@@ -69,7 +70,10 @@ export class EERC {
 
     if (this.decryptionKey) {
       const formatted = formatKeyForCurve(this.decryptionKey);
+      console.log({ formatted });
+
       this.publicKey = this.curve.generatePublicKey(formatted);
+      console.log({ publicKey: this.publicKey });
     }
   }
 
@@ -169,14 +173,18 @@ export class EERC {
 
       // get chain id
       const chainId = await this.client.getChainId();
+      // get full address
       const fullAddress = BigInt(this.wallet.account.address);
+      // construct registration hash
+      const registrationHash = poseidon3([chainId, formatted, fullAddress]);
 
       const input = {
         privateInputs: [String(formatted)],
         publicInputs: [
           ...publicKey.map(String),
           fullAddress.toString(),
-          chainId,
+          chainId.toString(),
+          registrationHash.toString(),
         ],
       };
 
@@ -236,6 +244,7 @@ export class EERC {
 
     // fetch the receiver public key
     const receiverPublicKey = await this.fetchPublicKey(recipient);
+    console.log({ receiverPublicKey });
 
     // 1. encrypt the total mint amount
     const { cipher: encryptedAmount, random: encryptedAmountRandom } =
@@ -263,6 +272,10 @@ export class EERC {
       publicKey: auditorPublicKey as Point,
     });
 
+    // 4. creates nullifier for auditor ciphertext
+    const chainId = await this.client.getChainId();
+    const nullifier = poseidon5([chainId, ...auditorCiphertext].map(String));
+
     const publicInputs = [
       ...receiverPublicKey,
       ...encryptedAmount.c1,
@@ -274,6 +287,8 @@ export class EERC {
       ...auditorCiphertext,
       ...auditorAuthKey,
       auditorPoseidonNonce,
+      chainId,
+      nullifier,
     ].map(String);
 
     const privateInputs = [
@@ -282,6 +297,8 @@ export class EERC {
       auditorEncryptionRandom,
       mintAmount,
     ].map(String);
+
+    console.log({ privateInputs, publicInputs });
 
     const { proof } = await this.proveFunc(
       JSON.stringify({ privateInputs, publicInputs }),
@@ -734,8 +751,8 @@ export class EERC {
 
     if (totalBalance !== 0n) {
       const decryptedEGCT = this.curve.elGamalDecryption(privateKey, {
-        c1: [eGCT.c1.X, eGCT.c1.Y],
-        c2: [eGCT.c2.X, eGCT.c2.Y],
+        c1: [eGCT.c1.x, eGCT.c1.y],
+        c2: [eGCT.c2.x, eGCT.c2.y],
       });
       const expectedPoint = this.curve.mulWithScalar(
         this.curve.Base8,

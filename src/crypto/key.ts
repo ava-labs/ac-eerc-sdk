@@ -33,7 +33,8 @@ export const formatKeyForCurve = (key: string): bigint => {
   hash = pruneBuffer(hash);
   hash = leBufferToBigInt(hash);
 
-  return Scalar.shiftRight(hash, 3);
+  // need to make sure that it is in the correct range
+  return Scalar.shiftRight(hash, 3) % SUB_GROUP_ORDER;
 };
 
 export const getPrivateKeyFromSignature = (signature: string): string => {

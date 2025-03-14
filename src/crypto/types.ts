@@ -19,6 +19,6 @@ export type AmountPCT = {
 };
 
 export type EGCT = {
-  c1: { X: bigint; Y: bigint };
-  c2: { X: bigint; Y: bigint };
+  c1: { x: bigint; y: bigint };
+  c2: { x: bigint; y: bigint };
 };
