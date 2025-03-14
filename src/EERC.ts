@@ -70,10 +70,7 @@ export class EERC {
 
     if (this.decryptionKey) {
       const formatted = formatKeyForCurve(this.decryptionKey);
-      console.log({ formatted });
-
       this.publicKey = this.curve.generatePublicKey(formatted);
-      console.log({ publicKey: this.publicKey });
     }
   }
 
@@ -244,7 +241,6 @@ export class EERC {
 
     // fetch the receiver public key
     const receiverPublicKey = await this.fetchPublicKey(recipient);
-    console.log({ receiverPublicKey });
 
     // 1. encrypt the total mint amount
     const { cipher: encryptedAmount, random: encryptedAmountRandom } =
@@ -297,8 +293,6 @@ export class EERC {
       auditorEncryptionRandom,
       mintAmount,
     ].map(String);
-
-    console.log({ privateInputs, publicInputs });
 
     const { proof } = await this.proveFunc(
       JSON.stringify({ privateInputs, publicInputs }),
