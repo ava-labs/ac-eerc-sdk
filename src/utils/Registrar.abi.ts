@@ -3,12 +3,32 @@ export const REGISTRAR_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_registrationVerifier",
+        name: "registrationVerifier_",
         type: "address",
       },
     ],
     stateMutability: "nonpayable",
     type: "constructor",
+  },
+  {
+    inputs: [],
+    name: "InvalidChainId",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "InvalidRegistrationHash",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "InvalidSender",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "UserAlreadyRegistered",
+    type: "error",
   },
   {
     anonymous: false,
@@ -23,12 +43,12 @@ export const REGISTRAR_ABI = [
         components: [
           {
             internalType: "uint256",
-            name: "X",
+            name: "x",
             type: "uint256",
           },
           {
             internalType: "uint256",
-            name: "Y",
+            name: "y",
             type: "uint256",
           },
         ],
@@ -55,10 +75,23 @@ export const REGISTRAR_ABI = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "burnUser",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "pure",
+    type: "function",
+  },
+  {
     inputs: [
       {
         internalType: "address",
-        name: "_user",
+        name: "user",
         type: "address",
       },
     ],
@@ -76,8 +109,27 @@ export const REGISTRAR_ABI = [
   {
     inputs: [
       {
+        internalType: "uint256",
+        name: "registrationHash",
+        type: "uint256",
+      },
+    ],
+    name: "isRegistered",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "isRegistered",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
         internalType: "address",
-        name: "_user",
+        name: "user",
         type: "address",
       },
     ],
@@ -100,9 +152,9 @@ export const REGISTRAR_ABI = [
         type: "uint256[8]",
       },
       {
-        internalType: "uint256[2]",
+        internalType: "uint256[5]",
         name: "input",
-        type: "uint256[2]",
+        type: "uint256[5]",
       },
     ],
     name: "register",
@@ -135,12 +187,12 @@ export const REGISTRAR_ABI = [
     outputs: [
       {
         internalType: "uint256",
-        name: "X",
+        name: "x",
         type: "uint256",
       },
       {
         internalType: "uint256",
-        name: "Y",
+        name: "y",
         type: "uint256",
       },
     ],

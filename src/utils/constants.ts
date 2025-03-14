@@ -7,7 +7,7 @@ export const SUB_GROUP_ORDER =
 
 export const MESSAGES = {
   REGISTER: (user: string) =>
-    `AvaCloud\nRegistering user with\n Address:${user.toLowerCase()}`,
+    `eERC\nRegistering user with\n Address:${user.toLowerCase()}`,
 };
 
 // burn user is used for private burn transactions

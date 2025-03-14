@@ -5,42 +5,42 @@ export const ENCRYPTED_ERC_ABI = [
         components: [
           {
             internalType: "address",
-            name: "_registrar",
+            name: "registrar",
             type: "address",
           },
           {
             internalType: "bool",
-            name: "_isConverter",
+            name: "isConverter",
             type: "bool",
           },
           {
             internalType: "string",
-            name: "_name",
+            name: "name",
             type: "string",
           },
           {
             internalType: "string",
-            name: "_symbol",
+            name: "symbol",
             type: "string",
           },
           {
             internalType: "uint8",
-            name: "_decimals",
+            name: "decimals",
             type: "uint8",
           },
           {
             internalType: "address",
-            name: "_mintVerifier",
+            name: "mintVerifier",
             type: "address",
           },
           {
             internalType: "address",
-            name: "_withdrawVerifier",
+            name: "withdrawVerifier",
             type: "address",
           },
           {
             internalType: "address",
-            name: "_transferVerifier",
+            name: "transferVerifier",
             type: "address",
           },
         ],
@@ -55,6 +55,16 @@ export const ENCRYPTED_ERC_ABI = [
   {
     inputs: [],
     name: "AuditorKeyNotSet",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "InvalidChainId",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "InvalidNullifier",
     type: "error",
   },
   {
@@ -87,6 +97,33 @@ export const ENCRYPTED_ERC_ABI = [
       },
     ],
     name: "OwnableUnauthorizedAccount",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+    ],
+    name: "SafeERC20FailedOperation",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+    ],
+    name: "TokenBlacklisted",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "TransferFailed",
     type: "error",
   },
   {
@@ -147,6 +184,25 @@ export const ENCRYPTED_ERC_ABI = [
       },
     ],
     name: "Deposit",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "previousOwner",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "newOwner",
+        type: "address",
+      },
+    ],
+    name: "OwnershipTransferStarted",
     type: "event",
   },
   {
@@ -270,9 +326,47 @@ export const ENCRYPTED_ERC_ABI = [
         name: "tokenId",
         type: "uint256",
       },
+      {
+        indexed: false,
+        internalType: "uint256[7]",
+        name: "auditorPCT",
+        type: "uint256[7]",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "auditorAddress",
+        type: "address",
+      },
     ],
     name: "Withdraw",
     type: "event",
+  },
+  {
+    inputs: [],
+    name: "acceptOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "mintNullifier",
+        type: "uint256",
+      },
+    ],
+    name: "alreadyMinted",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "isUsed",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
   },
   {
     inputs: [],
@@ -293,12 +387,12 @@ export const ENCRYPTED_ERC_ABI = [
     outputs: [
       {
         internalType: "uint256",
-        name: "X",
+        name: "x",
         type: "uint256",
       },
       {
         internalType: "uint256",
-        name: "Y",
+        name: "y",
         type: "uint256",
       },
     ],
@@ -309,12 +403,12 @@ export const ENCRYPTED_ERC_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_user",
+        name: "user",
         type: "address",
       },
       {
         internalType: "uint256",
-        name: "_tokenId",
+        name: "tokenId",
         type: "uint256",
       },
     ],
@@ -326,12 +420,12 @@ export const ENCRYPTED_ERC_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "X",
+                name: "x",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "Y",
+                name: "y",
                 type: "uint256",
               },
             ],
@@ -343,12 +437,12 @@ export const ENCRYPTED_ERC_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "X",
+                name: "x",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "Y",
+                name: "y",
                 type: "uint256",
               },
             ],
@@ -401,7 +495,7 @@ export const ENCRYPTED_ERC_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_user",
+        name: "user",
         type: "address",
       },
     ],
@@ -413,12 +507,12 @@ export const ENCRYPTED_ERC_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "X",
+                name: "x",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "Y",
+                name: "y",
                 type: "uint256",
               },
             ],
@@ -430,12 +524,12 @@ export const ENCRYPTED_ERC_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "X",
+                name: "x",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "Y",
+                name: "y",
                 type: "uint256",
               },
             ],
@@ -505,12 +599,12 @@ export const ENCRYPTED_ERC_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "X",
+                name: "x",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "Y",
+                name: "y",
                 type: "uint256",
               },
             ],
@@ -522,12 +616,12 @@ export const ENCRYPTED_ERC_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "X",
+                name: "x",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "Y",
+                name: "y",
                 type: "uint256",
               },
             ],
@@ -555,6 +649,25 @@ export const ENCRYPTED_ERC_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "tokenAddress",
+        type: "address",
+      },
+    ],
+    name: "blacklistedTokens",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "isBlacklisted",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "decimals",
     outputs: [
@@ -571,17 +684,17 @@ export const ENCRYPTED_ERC_ABI = [
     inputs: [
       {
         internalType: "uint256",
-        name: "_amount",
+        name: "amount",
         type: "uint256",
       },
       {
         internalType: "address",
-        name: "_tokenAddress",
+        name: "tokenAddress",
         type: "address",
       },
       {
         internalType: "uint256[7]",
-        name: "_amountPCT",
+        name: "amountPCT",
         type: "uint256[7]",
       },
     ],
@@ -594,12 +707,12 @@ export const ENCRYPTED_ERC_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_user",
+        name: "user",
         type: "address",
       },
       {
         internalType: "address",
-        name: "_tokenAddress",
+        name: "tokenAddress",
         type: "address",
       },
     ],
@@ -611,12 +724,12 @@ export const ENCRYPTED_ERC_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "X",
+                name: "x",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "Y",
+                name: "y",
                 type: "uint256",
               },
             ],
@@ -628,12 +741,12 @@ export const ENCRYPTED_ERC_ABI = [
             components: [
               {
                 internalType: "uint256",
-                name: "X",
+                name: "x",
                 type: "uint256",
               },
               {
                 internalType: "uint256",
-                name: "Y",
+                name: "y",
                 type: "uint256",
               },
             ],
@@ -722,6 +835,25 @@ export const ENCRYPTED_ERC_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "tokenAddress",
+        type: "address",
+      },
+    ],
+    name: "isTokenBlacklisted",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "mintVerifier",
     outputs: [
@@ -774,6 +906,19 @@ export const ENCRYPTED_ERC_ABI = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "pendingOwner",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [
       {
         internalType: "uint256[8]",
@@ -787,7 +932,7 @@ export const ENCRYPTED_ERC_ABI = [
       },
       {
         internalType: "uint256[7]",
-        name: "_balancePCT",
+        name: "balancePCT",
         type: "uint256[7]",
       },
     ],
@@ -800,7 +945,7 @@ export const ENCRYPTED_ERC_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_user",
+        name: "user",
         type: "address",
       },
       {
@@ -809,9 +954,9 @@ export const ENCRYPTED_ERC_ABI = [
         type: "uint256[8]",
       },
       {
-        internalType: "uint256[22]",
+        internalType: "uint256[24]",
         name: "input",
-        type: "uint256[22]",
+        type: "uint256[24]",
       },
     ],
     name: "privateMint",
@@ -843,11 +988,29 @@ export const ENCRYPTED_ERC_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_user",
+        name: "user",
         type: "address",
       },
     ],
     name: "setAuditorPublicKey",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "token",
+        type: "address",
+      },
+      {
+        internalType: "bool",
+        name: "blacklisted",
+        type: "bool",
+      },
+    ],
+    name: "setTokenBlacklist",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -926,12 +1089,12 @@ export const ENCRYPTED_ERC_ABI = [
     inputs: [
       {
         internalType: "address",
-        name: "_to",
+        name: "to",
         type: "address",
       },
       {
         internalType: "uint256",
-        name: "_tokenId",
+        name: "tokenId",
         type: "uint256",
       },
       {
@@ -946,7 +1109,7 @@ export const ENCRYPTED_ERC_ABI = [
       },
       {
         internalType: "uint256[7]",
-        name: "_balancePCT",
+        name: "balancePCT",
         type: "uint256[7]",
       },
     ],
@@ -985,12 +1148,7 @@ export const ENCRYPTED_ERC_ABI = [
     inputs: [
       {
         internalType: "uint256",
-        name: "_amount",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "_tokenId",
+        name: "tokenId",
         type: "uint256",
       },
       {
@@ -1005,7 +1163,7 @@ export const ENCRYPTED_ERC_ABI = [
       },
       {
         internalType: "uint256[7]",
-        name: "_balancePCT",
+        name: "balancePCT",
         type: "uint256[7]",
       },
     ],

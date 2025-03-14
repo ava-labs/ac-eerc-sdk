@@ -167,9 +167,17 @@ export class EERC {
       const formatted = formatKeyForCurve(key);
       const publicKey = this.curve.generatePublicKey(formatted);
 
+      // get chain id
+      const chainId = await this.client.getChainId();
+      const fullAddress = BigInt(this.wallet.account.address);
+
       const input = {
         privateInputs: [String(formatted)],
-        publicInputs: publicKey.map(String),
+        publicInputs: [
+          ...publicKey.map(String),
+          fullAddress.toString(),
+          chainId,
+        ],
       };
 
       {
