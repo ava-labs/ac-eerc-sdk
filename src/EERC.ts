@@ -369,7 +369,7 @@ export class EERC {
     auditorPublicKey: bigint[],
     tokenAddress?: string,
   ): Promise<{
-    transactionHash: string;
+    transactionHash: `0x${string}`;
     receiverEncryptedAmount: string[];
     senderEncryptedAmount: string[];
   }> {

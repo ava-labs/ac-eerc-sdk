@@ -80,7 +80,7 @@ export type UseEncryptedBalanceHookResult = {
     to: string,
     amount: bigint,
   ) => Promise<{
-    transactionHash: string;
+    transactionHash: `0x${string}`;
     receiverEncryptedAmount: string[];
     senderEncryptedAmount: string[];
   }>;
