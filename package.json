@@ -1,6 +1,6 @@
 {
   "name": "@avalabs/ac-eerc-sdk",
-  "version": "2.0.1",
+  "version": "2.0.11",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
