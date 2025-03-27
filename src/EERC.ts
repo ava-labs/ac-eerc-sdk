@@ -1,5 +1,5 @@
 import { poseidon3, poseidon5 } from "poseidon-lite";
-import { type Log, decodeFunctionData, isAddress } from "viem";
+import { type Log, decodeFunctionData, formatUnits, isAddress } from "viem";
 import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { FF } from "./crypto/ff";
@@ -142,6 +142,9 @@ export class EERC {
       const key = getPrivateKeyFromSignature(signature);
 
       this.decryptionKey = key;
+
+      const formatted = formatKeyForCurve(this.decryptionKey);
+      this.publicKey = this.curve.generatePublicKey(formatted);
 
       return key;
     } catch (error) {
@@ -408,7 +411,7 @@ export class EERC {
   }
 
   // function to deposit tokens to the contract
-  async deposit(amount: bigint, tokenAddress: string) {
+  async deposit(amount: bigint, tokenAddress: string, eERCDecimals: bigint) {
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
 
     logMessage("Depositing tokens to the contract");
@@ -422,10 +425,23 @@ export class EERC {
       throw new Error("Insufficient approval amount!");
     }
 
+    // need to convert erc20 decimals -> eERC decimals (2)
+    const decimals = await this.client.readContract({
+      abi: erc20ABI,
+      address: tokenAddress as `0x${string}`,
+      functionName: "decimals",
+    });
+
+    const parsedAmount = this.convertTokenDecimals(
+      amount,
+      Number(decimals),
+      Number(eERCDecimals),
+    );
+
     // user creates new balance pct for the deposit amount
     const { cipher, nonce, authKey } =
       await this.poseidon.processPoseidonEncryption({
-        inputs: [amount],
+        inputs: [BigInt(parsedAmount)],
         publicKey: this.publicKey as Point,
       });
 
@@ -510,7 +526,7 @@ export class EERC {
         abi: this.encryptedErcAbi,
         address: this.contractAddress as `0x${string}`,
         functionName: "withdraw",
-        args: [amount, tokenId, proof, publicInputs, userBalancePCT],
+        args: [tokenId, proof, publicInputs, userBalancePCT],
       });
 
       return { transactionHash };
@@ -949,6 +965,34 @@ export class EERC {
       return result.sort(
         (a, b) => Number(b.blockNumber) - Number(a.blockNumber),
       ) as DecryptedTransaction[];
+    } catch (e) {
+      throw new Error(e as string);
+    }
+  }
+
+  private convertTokenDecimals(
+    amount: bigint,
+    fromDecimals: number,
+    toDecimals: number,
+  ) {
+    try {
+      if (fromDecimals === toDecimals) {
+        return formatUnits(amount, toDecimals);
+      }
+
+      // decimal difference
+      const diff = fromDecimals - toDecimals;
+
+      let convertedAmount = 0n;
+      if (diff > 0) {
+        const scalingFactor = 10n ** BigInt(diff);
+        convertedAmount = amount / scalingFactor;
+      } else {
+        const scalingFactor = 10n ** BigInt(Math.abs(diff));
+        convertedAmount = amount * BigInt(scalingFactor);
+      }
+
+      return convertedAmount;
     } catch (e) {
       throw new Error(e as string);
     }
