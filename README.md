@@ -13,6 +13,6 @@
   This is an official Ava Labs repo for the eERC SDK.
 </p>
 
-## Getting Started 🚀
+## Documentation 📖
 
-Documentation can be found in [here](https://avacloud.gitbook.io/encrypted-erc/d87pGPcNAEEw9ISVd17M/usage/sdk-overview)
+Learn more from [here](https://avacloud.gitbook.io/encrypted-erc/usage/sdk-overview)
