@@ -255,6 +255,11 @@ export function useEERC(
     updateEercState,
   ]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we want to reset the key when wallet changes
+  useEffect(() => {
+    setGeneratedDecryptionKey("");
+  }, [wallet?.account?.address]);
+
   useEffect(() => {
     let mounted = true;
 
