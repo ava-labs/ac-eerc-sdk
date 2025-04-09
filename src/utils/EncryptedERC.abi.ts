@@ -54,11 +54,6 @@ export const ENCRYPTED_ERC_ABI = [
   },
   {
     inputs: [],
-    name: "AuditorKeyNotSet",
-    type: "error",
-  },
-  {
-    inputs: [],
     name: "InvalidChainId",
     type: "error",
   },
@@ -134,6 +129,11 @@ export const ENCRYPTED_ERC_ABI = [
   {
     inputs: [],
     name: "UserNotRegistered",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ZeroAddress",
     type: "error",
   },
   {
@@ -835,25 +835,6 @@ export const ENCRYPTED_ERC_ABI = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "tokenAddress",
-        type: "address",
-      },
-    ],
-    name: "isTokenBlacklisted",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "",
-        type: "bool",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [],
     name: "mintVerifier",
     outputs: [
@@ -921,14 +902,38 @@ export const ENCRYPTED_ERC_ABI = [
   {
     inputs: [
       {
-        internalType: "uint256[8]",
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[32]",
+            name: "publicSignals",
+            type: "uint256[32]",
+          },
+        ],
+        internalType: "struct TransferProof",
         name: "proof",
-        type: "uint256[8]",
-      },
-      {
-        internalType: "uint256[32]",
-        name: "input",
-        type: "uint256[32]",
+        type: "tuple",
       },
       {
         internalType: "uint256[7]",
@@ -949,14 +954,38 @@ export const ENCRYPTED_ERC_ABI = [
         type: "address",
       },
       {
-        internalType: "uint256[8]",
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[24]",
+            name: "publicSignals",
+            type: "uint256[24]",
+          },
+        ],
+        internalType: "struct MintProof",
         name: "proof",
-        type: "uint256[8]",
-      },
-      {
-        internalType: "uint256[24]",
-        name: "input",
-        type: "uint256[24]",
+        type: "tuple",
       },
     ],
     name: "privateMint",
@@ -1098,14 +1127,38 @@ export const ENCRYPTED_ERC_ABI = [
         type: "uint256",
       },
       {
-        internalType: "uint256[8]",
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[32]",
+            name: "publicSignals",
+            type: "uint256[32]",
+          },
+        ],
+        internalType: "struct TransferProof",
         name: "proof",
-        type: "uint256[8]",
-      },
-      {
-        internalType: "uint256[32]",
-        name: "input",
-        type: "uint256[32]",
+        type: "tuple",
       },
       {
         internalType: "uint256[7]",
@@ -1152,14 +1205,38 @@ export const ENCRYPTED_ERC_ABI = [
         type: "uint256",
       },
       {
-        internalType: "uint256[8]",
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[16]",
+            name: "publicSignals",
+            type: "uint256[16]",
+          },
+        ],
+        internalType: "struct WithdrawProof",
         name: "proof",
-        type: "uint256[8]",
-      },
-      {
-        internalType: "uint256[16]",
-        name: "input",
-        type: "uint256[16]",
+        type: "tuple",
       },
       {
         internalType: "uint256[7]",

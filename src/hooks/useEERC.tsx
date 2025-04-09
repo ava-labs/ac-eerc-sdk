@@ -11,18 +11,19 @@ import type { Point } from "../crypto/types";
 import { logMessage } from "../helpers";
 import { ENCRYPTED_ERC_ABI } from "../utils";
 import { REGISTRAR_ABI } from "../utils/Registrar.abi";
-import { useProver } from "../wasm";
-import type { DecryptedTransaction, EERCHookResult, IEERCState } from "./types";
+import type {
+  CircuitURLs,
+  DecryptedTransaction,
+  EERCHookResult,
+  IEERCState,
+} from "./types";
 import { useEncryptedBalance } from "./useEncryptedBalance";
 
 export function useEERC(
   client: PublicClient,
   wallet: WalletClient,
   contractAddress: string,
-  urls: {
-    transferURL: string;
-    multiWasmURL: string;
-  },
+  circuitURLs: CircuitURLs,
   decryptionKey?: string,
 ): EERCHookResult {
   const [eerc, setEerc] = useState<EERC | undefined>(undefined);
@@ -50,16 +51,6 @@ export function useEERC(
     [],
   );
 
-  // use prover
-  const { prove } = useProver({
-    transferURL: urls.transferURL.startsWith("/")
-      ? `${location.origin}/${urls.transferURL}`
-      : urls.transferURL,
-    multiWasmURL: urls.multiWasmURL.startsWith("/")
-      ? `${location.origin}/${urls.multiWasmURL}`
-      : urls.multiWasmURL,
-  });
-
   const eercContract = useMemo(
     () => ({
       address: contractAddress as `0x${string}`,
@@ -75,6 +66,10 @@ export function useEERC(
     }),
     [eercState.registrarAddress],
   );
+
+  const circuitURLsKey = useMemo(() => {
+    return JSON.stringify(circuitURLs);
+  }, [circuitURLs]);
 
   /**
    * get user data for checking is user registered
@@ -260,6 +255,7 @@ export function useEERC(
     setGeneratedDecryptionKey("");
   }, [wallet?.account?.address]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: circuitURLsKey is a stable key for circuitURLs
   useEffect(() => {
     let mounted = true;
 
@@ -270,8 +266,8 @@ export function useEERC(
         !contractAddress ||
         eercState.isConverter === undefined ||
         !eercState.registrarAddress ||
-        !prove ||
-        eercState.isInitialized
+        eercState.isInitialized ||
+        !circuitURLs
       )
         return;
 
@@ -280,13 +276,14 @@ export function useEERC(
         if (!correctKey) {
           logMessage("Decryption key is not set");
         }
+
         const _eerc = new EERC(
           client,
           wallet,
           contractAddress as `0x${string}`,
           eercState.registrarAddress as `0x${string}`,
           eercState.isConverter,
-          prove,
+          circuitURLs,
           correctKey,
         );
 
@@ -320,10 +317,10 @@ export function useEERC(
     eercState.isConverter,
     eercState.registrarAddress,
     decryptionKey,
-    prove,
     eercState.isInitialized,
     updateEercState,
     generatedDecryptionKey,
+    circuitURLsKey,
   ]);
 
   /**
@@ -463,6 +460,5 @@ export function useEERC(
 
     // hooks
     useEncryptedBalance: useEncryptedBalanceHook,
-    prove,
   };
 }

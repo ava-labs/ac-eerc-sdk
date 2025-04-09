@@ -17,6 +17,11 @@ export const REGISTRAR_ABI = [
   },
   {
     inputs: [],
+    name: "InvalidProof",
+    type: "error",
+  },
+  {
+    inputs: [],
     name: "InvalidRegistrationHash",
     type: "error",
   },
@@ -147,14 +152,38 @@ export const REGISTRAR_ABI = [
   {
     inputs: [
       {
-        internalType: "uint256[8]",
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[5]",
+            name: "publicSignals",
+            type: "uint256[5]",
+          },
+        ],
+        internalType: "struct RegisterProof",
         name: "proof",
-        type: "uint256[8]",
-      },
-      {
-        internalType: "uint256[5]",
-        name: "input",
-        type: "uint256[5]",
+        type: "tuple",
       },
     ],
     name: "register",
