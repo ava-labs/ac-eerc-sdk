@@ -447,7 +447,7 @@ export class EERC {
       });
     }
 
-    return { transactionHash };
+    return { transactionHash: transactionHash as `0x${string}` };
   }
 
   /**
