@@ -1,3 +1,4 @@
+import type { IProof } from "../helpers";
 import type { useEncryptedBalance } from "./useEncryptedBalance";
 
 export type EncryptedBalance = [ContractCipher, ContractCipher];
@@ -23,6 +24,11 @@ export type DecryptedTransaction = {
   receiver: `0x${string}` | null;
   transactionHash: `0x${string}`;
 };
+
+export type IProveFunction = (
+  data: string,
+  proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+) => Promise<IProof>;
 
 export type EERCHookResult = {
   isInitialized: boolean;
@@ -51,6 +57,7 @@ export type EERCHookResult = {
   useEncryptedBalance: (
     tokenAddress?: `0x${string}`,
   ) => ReturnType<typeof useEncryptedBalance>;
+  prove: IProveFunction;
   refetchEercUser: () => void;
   refetchAuditor: () => void;
   setContractAuditorPublicKey: (
@@ -102,6 +109,7 @@ export interface IEERCState {
     isChecking: boolean;
     isAuditor: boolean;
   };
+  snarkjs: boolean;
 }
 export type CircuitURLs = {
   register: {

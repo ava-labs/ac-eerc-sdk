@@ -11,6 +11,7 @@ import type { Point } from "../crypto/types";
 import { logMessage } from "../helpers";
 import { ENCRYPTED_ERC_ABI } from "../utils";
 import { REGISTRAR_ABI } from "../utils/Registrar.abi";
+import { useProver } from "../wasm";
 import type {
   CircuitURLs,
   DecryptedTransaction,
@@ -23,7 +24,12 @@ export function useEERC(
   client: PublicClient,
   wallet: WalletClient,
   contractAddress: string,
+  urls: {
+    transferURL: string;
+    multiWasmURL: string;
+  },
   circuitURLs: CircuitURLs,
+  snarkjs: boolean,
   decryptionKey?: string,
 ): EERCHookResult {
   const [eerc, setEerc] = useState<EERC | undefined>(undefined);
@@ -41,6 +47,7 @@ export function useEERC(
       isChecking: false,
       isAuditor: false,
     },
+    snarkjs,
   });
   const [generatedDecryptionKey, setGeneratedDecryptionKey] =
     useState<string>();
@@ -50,6 +57,15 @@ export function useEERC(
       setEercState((prevState) => ({ ...prevState, ...updates })),
     [],
   );
+
+  const { prove } = useProver({
+    transferURL: urls.transferURL.startsWith("/")
+      ? `${location.origin}/${urls.transferURL}`
+      : urls.transferURL,
+    multiWasmURL: urls.multiWasmURL.startsWith("/")
+      ? `${location.origin}/${urls.multiWasmURL}`
+      : urls.multiWasmURL,
+  });
 
   const eercContract = useMemo(
     () => ({
@@ -283,7 +299,9 @@ export function useEERC(
           contractAddress as `0x${string}`,
           eercState.registrarAddress as `0x${string}`,
           eercState.isConverter,
+          prove,
           circuitURLs,
+          eercState.snarkjs,
           correctKey,
         );
 
@@ -321,6 +339,8 @@ export function useEERC(
     updateEercState,
     generatedDecryptionKey,
     circuitURLsKey,
+    prove,
+    eercState.snarkjs,
   ]);
 
   /**
@@ -460,5 +480,6 @@ export function useEERC(
 
     // hooks
     useEncryptedBalance: useEncryptedBalanceHook,
+    prove,
   };
 }
