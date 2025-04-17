@@ -63,6 +63,7 @@ export type EERCHookResult = {
   setContractAuditorPublicKey: (
     address: `0x${string}`,
   ) => Promise<`0x${string}`>;
+  setSnarkJsMode: (useSnarkjs: boolean) => void;
 };
 
 export type UseEncryptedBalanceHookResult = {
@@ -109,8 +110,9 @@ export interface IEERCState {
     isChecking: boolean;
     isAuditor: boolean;
   };
-  snarkjs: boolean;
+  snarkjsMode: boolean;
 }
+
 export type CircuitURLs = {
   register: {
     wasm: string;

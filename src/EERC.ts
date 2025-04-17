@@ -51,7 +51,7 @@ export class EERC {
     proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
   ) => Promise<IProof>;
 
-  public snarkjs: boolean;
+  public snarkjsMode: boolean;
 
   constructor(
     client: PublicClient,
@@ -61,7 +61,6 @@ export class EERC {
     isConverter: boolean,
     proveFunc: IProveFunction,
     circuitURLs: CircuitURLs,
-    snarkjs: boolean,
     decryptionKey?: string,
   ) {
     this.client = client;
@@ -71,7 +70,7 @@ export class EERC {
     this.isConverter = isConverter;
     this.circuitURLs = circuitURLs;
     this.proveFunc = proveFunc;
-    this.snarkjs = snarkjs;
+    this.snarkjsMode = true;
 
     this.field = new FF(SNARK_FIELD_SIZE);
     this.curve = new BabyJub(this.field);
@@ -82,6 +81,15 @@ export class EERC {
       const formatted = formatKeyForCurve(this.decryptionKey);
       this.publicKey = this.curve.generatePublicKey(formatted);
     }
+  }
+
+  /**
+   * Updates the snarkjs flag to determine which proof generation method to use
+   * @param useSnarkjs whether to use snarkjs for proof generation
+   */
+  public setSnarkJsMode(useSnarkjs: boolean): void {
+    this.snarkjsMode = useSnarkjs;
+    logMessage(`EERC snarkjs mode set to: ${useSnarkjs}`);
   }
 
   /**
@@ -206,7 +214,7 @@ export class EERC {
 
       let transactionHash = "";
 
-      if (this.snarkjs) {
+      if (this.snarkjsMode) {
         const input = {
           SenderPrivateKey: formatted,
           SenderPublicKey: publicKey,
@@ -329,7 +337,7 @@ export class EERC {
 
     let transactionHash = "0x0";
 
-    if (this.snarkjs) {
+    if (this.snarkjsMode) {
       const input = {
         ValueToMint: mintAmount,
         ChainID: chainId,
@@ -431,7 +439,7 @@ export class EERC {
 
     let transactionHash = "";
 
-    if (this.snarkjs) {
+    if (this.snarkjsMode) {
       transactionHash = await this.wallet.writeContract({
         abi: this.encryptedErcAbi,
         address: this.contractAddress,
@@ -499,7 +507,7 @@ export class EERC {
 
     let transactionHash = "";
 
-    if (this.snarkjs) {
+    if (this.snarkjsMode) {
       transactionHash = await this.wallet.writeContract({
         abi: this.encryptedErcAbi,
         address: this.contractAddress,
@@ -609,7 +617,7 @@ export class EERC {
 
       let transactionHash = "";
 
-      if (this.snarkjs) {
+      if (this.snarkjsMode) {
         const input = {
           ValueToWithdraw: amount,
           SenderPrivateKey: privateKey,
@@ -758,7 +766,7 @@ export class EERC {
       let proof: eERC_Proof | string[];
       let publicInputs: string[];
 
-      if (this.snarkjs) {
+      if (this.snarkjsMode) {
         publicInputs = [];
         const input = {
           ValueToTransfer: amount,

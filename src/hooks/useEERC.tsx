@@ -29,7 +29,6 @@ export function useEERC(
     multiWasmURL: string;
   },
   circuitURLs: CircuitURLs,
-  snarkjs: boolean,
   decryptionKey?: string,
 ): EERCHookResult {
   const [eerc, setEerc] = useState<EERC | undefined>(undefined);
@@ -47,7 +46,7 @@ export function useEERC(
       isChecking: false,
       isAuditor: false,
     },
-    snarkjs,
+    snarkjsMode: true,
   });
   const [generatedDecryptionKey, setGeneratedDecryptionKey] =
     useState<string>();
@@ -301,7 +300,6 @@ export function useEERC(
           eercState.isConverter,
           prove,
           circuitURLs,
-          eercState.snarkjs,
           correctKey,
         );
 
@@ -340,7 +338,6 @@ export function useEERC(
     generatedDecryptionKey,
     circuitURLsKey,
     prove,
-    eercState.snarkjs,
   ]);
 
   /**
@@ -447,6 +444,18 @@ export function useEERC(
     [eerc],
   );
 
+  /**
+   * set snarkjs mode
+   * @param useSnarkjs - use snarkjs
+   */
+  const setSnarkJsMode = useCallback(
+    (useSnarkjs: boolean) => {
+      if (!eerc) throw new Error("EERC not initialized");
+      eerc.setSnarkJsMode(useSnarkjs);
+    },
+    [eerc],
+  );
+
   return {
     isInitialized: eercState.isInitialized, // is sdk initialized
     isAllDataFetched: eercState.isAllDataFetched, // is all data fetched
@@ -473,6 +482,7 @@ export function useEERC(
     isAddressRegistered, // function for checking address is registered or not
     generateDecryptionKey, // generate decryption key
     setContractAuditorPublicKey, // set contract auditor public key
+    setSnarkJsMode, // set snarkjs mode
 
     // refetch
     refetchEercUser,
