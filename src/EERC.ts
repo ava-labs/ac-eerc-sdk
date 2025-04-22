@@ -23,6 +23,8 @@ import {
   PRIVATE_MINT_EVENT,
   PRIVATE_TRANSFER_EVENT,
   REGISTRAR_ABI,
+  LEGACY_REGISTRAR_ABI,
+  LEGACY_ENCRYPTED_ERC_ABI,
   SNARK_FIELD_SIZE,
 } from "./utils";
 
@@ -37,9 +39,11 @@ export class EERC {
   public contractAddress: `0x${string}`;
   public isConverter: boolean;
   public encryptedErcAbi = ENCRYPTED_ERC_ABI;
+  public legacyEncryptedErcAbi = LEGACY_ENCRYPTED_ERC_ABI;
 
   public registrarAddress: `0x${string}`;
   public registrarAbi = REGISTRAR_ABI;
+  public legacyRegistrarAbi = LEGACY_REGISTRAR_ABI;
 
   private decryptionKey: string;
   public publicKey: bigint[] = [];
@@ -81,15 +85,6 @@ export class EERC {
       const formatted = formatKeyForCurve(this.decryptionKey);
       this.publicKey = this.curve.generatePublicKey(formatted);
     }
-  }
-
-  /**
-   * Updates the snarkjs flag to determine which proof generation method to use
-   * @param useSnarkjs whether to use snarkjs for proof generation
-   */
-  public setSnarkJsMode(useSnarkjs: boolean): void {
-    this.snarkjsMode = useSnarkjs;
-    logMessage(`EERC snarkjs mode set to: ${useSnarkjs}`);
   }
 
   /**
@@ -212,68 +207,26 @@ export class EERC {
       // construct registration hash
       const registrationHash = poseidon3([chainId, formatted, fullAddress]);
 
-      let transactionHash = "";
+      const input = {
+        SenderPrivateKey: formatted,
+        SenderPublicKey: publicKey,
+        SenderAddress: fullAddress,
+        ChainID: chainId,
+        RegistrationHash: registrationHash,
+      };
 
-      if (this.snarkjsMode) {
-        const input = {
-          SenderPrivateKey: formatted,
-          SenderPublicKey: publicKey,
-          SenderAddress: fullAddress,
-          ChainID: chainId,
-          RegistrationHash: registrationHash,
-        };
+      // generate proof for the transaction
+      const proof = await this.generateProof(input, "REGISTER");
 
-        // generate proof for the transaction
-        const proof = await this.generateProof(input, "REGISTER");
-
-        logMessage("Sending transaction");
-        transactionHash = await this.wallet.writeContract({
-          abi: this.registrarAbi,
-          address: this.registrarAddress,
-          functionName: "register",
-          args: [proof],
-        });
-      } else {
-        const input = {
-          privateInputs: [String(formatted)],
-          publicInputs: [
-            ...publicKey.map(String),
-            fullAddress.toString(),
-            chainId.toString(),
-            registrationHash.toString(),
-          ],
-        };
-
-        {
-          const contractPublicKey = await this.fetchPublicKey(
-            this.wallet.account.address,
-          );
-
-          // if user already registered return the key
-          if (contractPublicKey[0] !== 0n && contractPublicKey[1] !== 0n) {
-            this.decryptionKey = key as string;
-            this.publicKey = publicKey;
-            return {
-              key,
-              transactionHash: "",
-            };
-          }
-        }
-
-        // generate proof for the transaction
-        const { proof } = await this.proveFunc(
-          JSON.stringify(input),
-          "REGISTER",
-        );
-
-        logMessage("Sending transaction");
-        transactionHash = await this.wallet.writeContract({
-          abi: this.registrarAbi,
-          address: this.registrarAddress,
-          functionName: "register",
-          args: [proof, input.publicInputs],
-        });
-      }
+      logMessage("Sending transaction");
+      const transactionHash = await this.wallet.writeContract({
+        abi: this.snarkjsMode ? this.registrarAbi : this.legacyRegistrarAbi,
+        address: this.registrarAddress,
+        functionName: "register",
+        args: this.snarkjsMode
+          ? [proof]
+          : [(proof as IProof).proof, (proof as IProof).publicInputs],
+      });
 
       this.decryptionKey = key;
       this.publicKey = publicKey;
@@ -335,75 +288,38 @@ export class EERC {
     const chainId = await this.client.getChainId();
     const nullifier = poseidon5([chainId, ...auditorCiphertext].map(String));
 
-    let transactionHash = "0x0";
+    const input = {
+      ValueToMint: mintAmount,
+      ChainID: chainId,
+      NullifierHash: nullifier,
+      ReceiverPublicKey: receiverPublicKey,
+      ReceiverVTTC1: encryptedAmount.c1,
+      ReceiverVTTC2: encryptedAmount.c2,
+      ReceiverVTTRandom: encryptedAmountRandom,
+      ReceiverPCT: receiverCiphertext,
+      ReceiverPCTAuthKey: receiverAuthKey,
+      ReceiverPCTNonce: receiverPoseidonNonce,
+      ReceiverPCTRandom: receiverEncryptionRandom,
+      AuditorPublicKey: auditorPublicKey,
+      AuditorPCT: auditorCiphertext,
+      AuditorPCTAuthKey: auditorAuthKey,
+      AuditorPCTNonce: auditorPoseidonNonce,
+      AuditorPCTRandom: auditorEncryptionRandom,
+    };
 
-    if (this.snarkjsMode) {
-      const input = {
-        ValueToMint: mintAmount,
-        ChainID: chainId,
-        NullifierHash: nullifier,
-        ReceiverPublicKey: receiverPublicKey,
-        ReceiverVTTC1: encryptedAmount.c1,
-        ReceiverVTTC2: encryptedAmount.c2,
-        ReceiverVTTRandom: encryptedAmountRandom,
-        ReceiverPCT: receiverCiphertext,
-        ReceiverPCTAuthKey: receiverAuthKey,
-        ReceiverPCTNonce: receiverPoseidonNonce,
-        ReceiverPCTRandom: receiverEncryptionRandom,
-        AuditorPublicKey: auditorPublicKey,
-        AuditorPCT: auditorCiphertext,
-        AuditorPCTAuthKey: auditorAuthKey,
-        AuditorPCTNonce: auditorPoseidonNonce,
-        AuditorPCTRandom: auditorEncryptionRandom,
-      };
+    const proof = await this.generateProof(input, "MINT");
 
-      const proof = await this.generateProof(input, "MINT");
+    // write the transaction to the contract
+    const transactionHash = await this.wallet.writeContract({
+      abi: this.snarkjsMode ? this.encryptedErcAbi : this.legacyEncryptedErcAbi,
+      address: this.contractAddress,
+      functionName: "privateMint",
+      args: this.snarkjsMode
+        ? [recipient, proof]
+        : [recipient, (proof as IProof).proof, (proof as IProof).publicInputs],
+    });
 
-      // write the transaction to the contract
-      transactionHash = await this.wallet.writeContract({
-        abi: this.encryptedErcAbi,
-        address: this.contractAddress,
-        functionName: "privateMint",
-        args: [recipient, proof],
-      });
-    } else {
-      const publicInputs = [
-        ...receiverPublicKey,
-        ...encryptedAmount.c1,
-        ...encryptedAmount.c2,
-        ...receiverCiphertext,
-        ...receiverAuthKey,
-        receiverPoseidonNonce,
-        ...auditorPublicKey,
-        ...auditorCiphertext,
-        ...auditorAuthKey,
-        auditorPoseidonNonce,
-        chainId,
-        nullifier,
-      ].map(String);
-
-      const privateInputs = [
-        encryptedAmountRandom,
-        receiverEncryptionRandom,
-        auditorEncryptionRandom,
-        mintAmount,
-      ].map(String);
-
-      const { proof } = await this.proveFunc(
-        JSON.stringify({ privateInputs, publicInputs }),
-        "MINT",
-      );
-
-      // write the transaction to the contract
-      transactionHash = await this.wallet.writeContract({
-        abi: this.encryptedErcAbi,
-        address: this.contractAddress,
-        functionName: "privateMint",
-        args: [recipient, proof, publicInputs],
-      });
-    }
-
-    return { transactionHash: transactionHash as `0x${string}` };
+    return { transactionHash };
   }
 
   /**
@@ -426,36 +342,30 @@ export class EERC {
     this.validateAmount(amount, decryptedBalance);
     logMessage("Burning encrypted tokens");
 
-    const { proof, senderBalancePCT, publicInputs } =
-      await this.generateTransferProof(
-        BURN_USER.address,
-        amount,
-        encryptedBalance,
-        decryptedBalance,
-        auditorPublicKey,
-      );
+    const { proof, senderBalancePCT } = await this.generateTransferProof(
+      BURN_USER.address,
+      amount,
+      encryptedBalance,
+      decryptedBalance,
+      auditorPublicKey,
+    );
 
     logMessage("Sending transaction");
 
-    let transactionHash = "";
+    const transactionHash = await this.wallet.writeContract({
+      abi: this.snarkjsMode ? this.encryptedErcAbi : this.legacyEncryptedErcAbi,
+      address: this.contractAddress,
+      functionName: "privateBurn",
+      args: this.snarkjsMode
+        ? [proof, senderBalancePCT]
+        : [
+            (proof as IProof).proof,
+            (proof as IProof).publicInputs,
+            senderBalancePCT,
+          ],
+    });
 
-    if (this.snarkjsMode) {
-      transactionHash = await this.wallet.writeContract({
-        abi: this.encryptedErcAbi,
-        address: this.contractAddress,
-        functionName: "privateBurn",
-        args: [proof, senderBalancePCT],
-      });
-    } else {
-      transactionHash = await this.wallet.writeContract({
-        abi: this.encryptedErcAbi,
-        address: this.contractAddress,
-        functionName: "privateBurn",
-        args: [proof, publicInputs, senderBalancePCT],
-      });
-    }
-
-    return { transactionHash: transactionHash as `0x${string}` };
+    return { transactionHash };
   }
 
   /**
@@ -491,7 +401,6 @@ export class EERC {
     logMessage("Transferring encrypted tokens");
     const {
       proof,
-      publicInputs,
       senderBalancePCT,
       receiverEncryptedAmount,
       senderEncryptedAmount,
@@ -505,26 +414,23 @@ export class EERC {
 
     logMessage("Sending transaction");
 
-    let transactionHash = "";
-
-    if (this.snarkjsMode) {
-      transactionHash = await this.wallet.writeContract({
-        abi: this.encryptedErcAbi,
-        address: this.contractAddress,
-        functionName: "transfer",
-        args: [to, tokenId, proof, senderBalancePCT],
-      });
-    } else {
-      transactionHash = await this.wallet.writeContract({
-        abi: this.encryptedErcAbi,
-        address: this.contractAddress,
-        functionName: "transfer",
-        args: [to, tokenId, proof, publicInputs, senderBalancePCT],
-      });
-    }
+    const transactionHash = await this.wallet.writeContract({
+      abi: this.snarkjsMode ? this.encryptedErcAbi : this.legacyEncryptedErcAbi,
+      address: this.contractAddress,
+      functionName: "transfer",
+      args: this.snarkjsMode
+        ? [to, tokenId, proof, senderBalancePCT]
+        : [
+            to,
+            tokenId,
+            (proof as IProof).proof,
+            (proof as IProof).publicInputs,
+            senderBalancePCT,
+          ],
+    });
 
     return {
-      transactionHash: transactionHash as `0x${string}`,
+      transactionHash,
       receiverEncryptedAmount,
       senderEncryptedAmount,
     };
@@ -615,73 +521,46 @@ export class EERC {
         publicKey: auditorPublicKey as Point,
       });
 
-      let transactionHash = "";
+      const input = {
+        ValueToWithdraw: amount,
+        SenderPrivateKey: privateKey,
+        SenderPublicKey: this.publicKey,
+        SenderBalance: decryptedBalance,
+        SenderBalanceC1: encryptedBalance.slice(0, 2),
+        SenderBalanceC2: encryptedBalance.slice(2, 4),
+        AuditorPublicKey: auditorPublicKey,
+        AuditorPCT: auditorCipherText,
+        AuditorPCTAuthKey: auditorAuthKey,
+        AuditorPCTNonce: auditorPoseidonNonce,
+        AuditorPCTRandom: auditorEncryptionRandom,
+      };
 
-      if (this.snarkjsMode) {
-        const input = {
-          ValueToWithdraw: amount,
-          SenderPrivateKey: privateKey,
-          SenderPublicKey: this.publicKey,
-          SenderBalance: decryptedBalance,
-          SenderBalanceC1: encryptedBalance.slice(0, 2),
-          SenderBalanceC2: encryptedBalance.slice(2, 4),
-          AuditorPublicKey: auditorPublicKey,
-          AuditorPCT: auditorCipherText,
-          AuditorPCTAuthKey: auditorAuthKey,
-          AuditorPCTNonce: auditorPoseidonNonce,
-          AuditorPCTRandom: auditorEncryptionRandom,
-        };
+      // generate proof
+      const proof = await this.generateProof(input, "WITHDRAW");
 
-        // generate proof
-        const proof = await this.generateProof(input, "WITHDRAW");
+      const userBalancePCT = [
+        ...senderCipherText,
+        ...senderAuthKey,
+        senderPoseidonNonce,
+      ].map(String);
 
-        transactionHash = await this.wallet.writeContract({
-          abi: this.encryptedErcAbi,
-          address: this.contractAddress as `0x${string}`,
-          functionName: "withdraw",
-          args: [
-            tokenId,
-            proof,
-            [...senderCipherText, ...senderAuthKey, senderPoseidonNonce],
-          ],
-        });
-      } else {
-        const publicInputs = [
-          ...this.publicKey,
-          ...encryptedBalance,
-          ...auditorPublicKey,
-          ...auditorCipherText,
-          ...auditorAuthKey,
-          auditorPoseidonNonce,
-          amount,
-        ].map(String);
+      const transactionHash = await this.wallet.writeContract({
+        abi: this.snarkjsMode
+          ? this.encryptedErcAbi
+          : this.legacyEncryptedErcAbi,
+        address: this.contractAddress as `0x${string}`,
+        functionName: "withdraw",
+        args: this.snarkjsMode
+          ? [tokenId, proof, userBalancePCT]
+          : [
+              tokenId,
+              (proof as IProof).proof,
+              (proof as IProof).publicInputs,
+              userBalancePCT,
+            ],
+      });
 
-        const privateInputs = [
-          privateKey,
-          decryptedBalance,
-          auditorEncryptionRandom,
-        ].map(String);
-
-        const userBalancePCT = [
-          ...senderCipherText,
-          ...senderAuthKey,
-          senderPoseidonNonce,
-        ].map(String);
-
-        const { proof } = await this.proveFunc(
-          JSON.stringify({ privateInputs, publicInputs }),
-          "WITHDRAW",
-        );
-
-        transactionHash = await this.wallet.writeContract({
-          abi: this.encryptedErcAbi,
-          address: this.contractAddress as `0x${string}`,
-          functionName: "withdraw",
-          args: [tokenId, proof, publicInputs, userBalancePCT],
-        });
-      }
-
-      return { transactionHash: transactionHash as `0x${string}` };
+      return { transactionHash };
     } catch (e) {
       throw new Error(e as string);
     }
@@ -703,8 +582,7 @@ export class EERC {
     decryptedBalance: bigint,
     auditorPublicKey: bigint[],
   ): Promise<{
-    proof: eERC_Proof | string[];
-    publicInputs: string[];
+    proof: eERC_Proof | IProof;
     senderBalancePCT: string[];
     receiverEncryptedAmount: string[];
     senderEncryptedAmount: string[];
@@ -763,72 +641,32 @@ export class EERC {
         publicKey: this.publicKey as Point,
       });
 
-      let proof: eERC_Proof | string[];
-      let publicInputs: string[];
+      const input = {
+        ValueToTransfer: amount,
+        SenderPrivateKey: privateKey,
+        SenderPublicKey: this.publicKey,
+        SenderBalance: decryptedBalance,
+        SenderBalanceC1: encryptedBalance.slice(0, 2),
+        SenderBalanceC2: encryptedBalance.slice(2, 4),
+        SenderVTTC1: encryptedAmountSender.c1,
+        SenderVTTC2: encryptedAmountSender.c2,
+        ReceiverPublicKey: receiverPublicKey,
+        ReceiverVTTC1: encryptedAmountReceiver.c1,
+        ReceiverVTTC2: encryptedAmountReceiver.c2,
+        ReceiverVTTRandom: encryptedAmountReceiverRandom,
+        ReceiverPCT: receiverCipherText,
+        ReceiverPCTAuthKey: receiverAuthKey,
+        ReceiverPCTNonce: receiverPoseidonNonce,
+        ReceiverPCTRandom: receiverEncryptionRandom,
 
-      if (this.snarkjsMode) {
-        publicInputs = [];
-        const input = {
-          ValueToTransfer: amount,
-          SenderPrivateKey: privateKey,
-          SenderPublicKey: this.publicKey,
-          SenderBalance: decryptedBalance,
-          SenderBalanceC1: encryptedBalance.slice(0, 2),
-          SenderBalanceC2: encryptedBalance.slice(2, 4),
-          SenderVTTC1: encryptedAmountSender.c1,
-          SenderVTTC2: encryptedAmountSender.c2,
-          ReceiverPublicKey: receiverPublicKey,
-          ReceiverVTTC1: encryptedAmountReceiver.c1,
-          ReceiverVTTC2: encryptedAmountReceiver.c2,
-          ReceiverVTTRandom: encryptedAmountReceiverRandom,
-          ReceiverPCT: receiverCipherText,
-          ReceiverPCTAuthKey: receiverAuthKey,
-          ReceiverPCTNonce: receiverPoseidonNonce,
-          ReceiverPCTRandom: receiverEncryptionRandom,
+        AuditorPublicKey: auditorPublicKey,
+        AuditorPCT: auditorCipherText,
+        AuditorPCTAuthKey: auditorAuthKey,
+        AuditorPCTNonce: auditorPoseidonNonce,
+        AuditorPCTRandom: auditorEncryptionRandom,
+      };
 
-          AuditorPublicKey: auditorPublicKey,
-          AuditorPCT: auditorCipherText,
-          AuditorPCTAuthKey: auditorAuthKey,
-          AuditorPCTNonce: auditorPoseidonNonce,
-          AuditorPCTRandom: auditorEncryptionRandom,
-        };
-
-        // generate transfer proof
-        proof = await this.generateProof(input, "TRANSFER");
-      } else {
-        publicInputs = [
-          ...this.publicKey,
-          ...encryptedBalance,
-          ...encryptedAmountSender.c1,
-          ...encryptedAmountSender.c2,
-          ...receiverPublicKey,
-          ...encryptedAmountReceiver.c1,
-          ...encryptedAmountReceiver.c2,
-          ...receiverCipherText,
-          ...receiverAuthKey,
-          receiverPoseidonNonce,
-          ...auditorPublicKey,
-          ...auditorCipherText,
-          ...auditorAuthKey,
-          auditorPoseidonNonce,
-        ].map(String);
-
-        const privateInputs = [
-          privateKey,
-          decryptedBalance,
-          encryptedAmountReceiverRandom,
-          receiverEncryptionRandom,
-          auditorEncryptionRandom,
-          amount,
-        ].map(String);
-
-        const { proof: generatedProof } = await this.proveFunc(
-          JSON.stringify({ privateInputs, publicInputs }),
-          "TRANSFER",
-        );
-
-        proof = generatedProof;
-      }
+      const proof = await this.generateProof(input, "TRANSFER");
 
       // and also encrypts the amount of the transfer with sender public key for transaction history
       const {
@@ -842,7 +680,6 @@ export class EERC {
 
       return {
         proof,
-        publicInputs,
         senderBalancePCT: [
           ...senderCipherText,
           ...senderAuthKey,
@@ -1189,6 +1026,27 @@ export class EERC {
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     input: any,
     operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+  ): Promise<eERC_Proof | IProof> {
+    logMessage("Generating proof function");
+    if (this.snarkjsMode) {
+      return this.generateSnarkjsProof(input, operation);
+    }
+
+    const extractedInputs = this.extractSnarkJsInputsToGnark(input, operation);
+    const proof = await this.proveFunc(
+      JSON.stringify(extractedInputs),
+      operation,
+    );
+
+    proof.publicInputs = extractedInputs.publicInputs;
+
+    return proof;
+  }
+
+  private async generateSnarkjsProof(
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    input: any,
+    operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
   ): Promise<eERC_Proof> {
     let wasm: string;
     let zkey: string;
@@ -1245,5 +1103,93 @@ export class EERC {
       },
       publicSignals: rawCalldata[3],
     };
+  }
+
+  private extractSnarkJsInputsToGnark(
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    input: any,
+    operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+  ) {
+    switch (operation) {
+      case "REGISTER":
+        return {
+          privateInputs: [String(input.SenderPrivateKey)],
+          publicInputs: [
+            ...input.SenderPublicKey.map(String),
+            input.SenderAddress.toString(),
+            input.ChainID.toString(),
+            input.RegistrationHash.toString(),
+          ],
+        };
+      case "MINT":
+        return {
+          privateInputs: [
+            input.ReceiverVTTRandom,
+            input.ReceiverPCTRandom,
+            input.AuditorPCTRandom,
+            input.ValueToMint,
+          ].map(String),
+          publicInputs: [
+            ...input.ReceiverPublicKey.map(String),
+            ...input.ReceiverVTTC1.map(String),
+            ...input.ReceiverVTTC2.map(String),
+            ...input.ReceiverPCT.map(String),
+            ...input.ReceiverPCTAuthKey.map(String),
+            input.ReceiverPCTNonce.toString(),
+            ...input.AuditorPublicKey.map(String),
+            ...input.AuditorPCT.map(String),
+            ...input.AuditorPCTAuthKey.map(String),
+            input.AuditorPCTNonce.toString(),
+            input.ChainID.toString(),
+            input.NullifierHash.toString(),
+          ],
+        };
+      case "WITHDRAW":
+        return {
+          privateInputs: [
+            String(input.SenderPrivateKey),
+            String(input.SenderBalance),
+            String(input.AuditorPCTRandom),
+          ],
+          publicInputs: [
+            ...input.SenderPublicKey.map(String),
+            ...input.SenderBalanceC1.map(String),
+            ...input.SenderBalanceC2.map(String),
+            ...input.AuditorPublicKey.map(String),
+            ...input.AuditorPCT.map(String),
+            ...input.AuditorPCTAuthKey.map(String),
+            String(input.AuditorPCTNonce),
+            String(input.ValueToWithdraw),
+          ],
+        };
+      case "TRANSFER":
+        return {
+          privateInputs: [
+            String(input.SenderPrivateKey),
+            String(input.SenderBalance),
+            String(input.ReceiverVTTRandom),
+            String(input.ReceiverPCTRandom),
+            String(input.AuditorPCTRandom),
+            String(input.ValueToTransfer),
+          ],
+          publicInputs: [
+            ...input.SenderPublicKey.map(String),
+            ...input.SenderBalanceC1.map(String),
+            ...input.SenderBalanceC2.map(String),
+            ...input.SenderVTTC1.map(String),
+            ...input.SenderVTTC2.map(String),
+            ...input.ReceiverPublicKey.map(String),
+            ...input.ReceiverVTTC1.map(String),
+            ...input.ReceiverVTTC2.map(String),
+            ...input.ReceiverPCT.map(String),
+            ...input.ReceiverPCTAuthKey.map(String),
+            String(input.ReceiverPCTNonce),
+            ...input.AuditorPublicKey.map(String),
+            ...input.AuditorPCT.map(String),
+            ...input.AuditorPCTAuthKey.map(String),
+            String(input.AuditorPCTNonce),
+          ],
+        };
+    }
   }
 }

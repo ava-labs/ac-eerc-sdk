@@ -63,7 +63,6 @@ export type EERCHookResult = {
   setContractAuditorPublicKey: (
     address: `0x${string}`,
   ) => Promise<`0x${string}`>;
-  setSnarkJsMode: (useSnarkjs: boolean) => void;
 };
 
 export type UseEncryptedBalanceHookResult = {

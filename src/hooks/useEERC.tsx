@@ -9,7 +9,7 @@ import {
 import { EERC } from "../EERC";
 import type { Point } from "../crypto/types";
 import { logMessage } from "../helpers";
-import { ENCRYPTED_ERC_ABI } from "../utils";
+import { ENCRYPTED_ERC_ABI, LEGACY_ENCRYPTED_ERC_BYTECODE } from "../utils";
 import { REGISTRAR_ABI } from "../utils/Registrar.abi";
 import { useProver } from "../wasm";
 import type {
@@ -56,6 +56,34 @@ export function useEERC(
       setEercState((prevState) => ({ ...prevState, ...updates })),
     [],
   );
+
+  // Function to check bytecode and set snarkjsMode
+  useEffect(() => {
+    const checkBytecode = async () => {
+      if (!client || !contractAddress) return;
+
+      try {
+        const bytecode = await client.getBytecode({
+          address: contractAddress as `0x${string}`,
+        });
+
+        if (bytecode) {
+          const shouldUseSnarkJs = !bytecode.includes(
+            LEGACY_ENCRYPTED_ERC_BYTECODE,
+          );
+
+          updateEercState({ snarkjsMode: shouldUseSnarkJs });
+          logMessage(
+            `Contract bytecode checked. Setting snarkjsMode to: ${shouldUseSnarkJs}`,
+          );
+        }
+      } catch (error) {
+        logMessage(`Failed to check bytecode: ${error}`);
+      }
+    };
+
+    checkBytecode();
+  }, [client, contractAddress, updateEercState]);
 
   const { prove } = useProver({
     transferURL: urls.transferURL.startsWith("/")
@@ -303,6 +331,9 @@ export function useEERC(
           correctKey,
         );
 
+        _eerc.snarkjsMode = eercState.snarkjsMode;
+        logMessage(`Using snarkjsMode: ${eercState.snarkjsMode}`);
+
         if (mounted) {
           setEerc(_eerc);
           updateEercState({
@@ -338,6 +369,7 @@ export function useEERC(
     generatedDecryptionKey,
     circuitURLsKey,
     prove,
+    eercState.snarkjsMode, // Add snarkjsMode to dependencies
   ]);
 
   /**
@@ -444,18 +476,6 @@ export function useEERC(
     [eerc],
   );
 
-  /**
-   * set snarkjs mode
-   * @param useSnarkjs - use snarkjs
-   */
-  const setSnarkJsMode = useCallback(
-    (useSnarkjs: boolean) => {
-      if (!eerc) throw new Error("EERC not initialized");
-      eerc.setSnarkJsMode(useSnarkjs);
-    },
-    [eerc],
-  );
-
   return {
     isInitialized: eercState.isInitialized, // is sdk initialized
     isAllDataFetched: eercState.isAllDataFetched, // is all data fetched
@@ -482,7 +502,6 @@ export function useEERC(
     isAddressRegistered, // function for checking address is registered or not
     generateDecryptionKey, // generate decryption key
     setContractAuditorPublicKey, // set contract auditor public key
-    setSnarkJsMode, // set snarkjs mode
 
     // refetch
     refetchEercUser,

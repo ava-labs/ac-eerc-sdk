@@ -1,5 +1,6 @@
 export type IProof = {
   proof: string[];
+  publicInputs: string[];
 };
 
 export enum ProofType {
