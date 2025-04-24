@@ -1072,6 +1072,12 @@ export class EERC {
         throw new Error("Invalid operation");
     }
 
+    if (!wasm || !zkey) {
+      throw new Error(
+        `Missing ${!wasm ? "WASM" : "ZKey"} URL for ${operation} operation`,
+      );
+    }
+
     const absoluteWasmURL = wasm.startsWith("/")
       ? new URL(wasm, import.meta.url)
       : new URL(wasm);

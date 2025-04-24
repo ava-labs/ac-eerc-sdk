@@ -9,7 +9,7 @@ import {
 import { EERC } from "../EERC";
 import type { Point } from "../crypto/types";
 import { logMessage } from "../helpers";
-import { ENCRYPTED_ERC_ABI, LEGACY_ENCRYPTED_ERC_BYTECODE } from "../utils";
+import { ENCRYPTED_ERC_ABI } from "../utils";
 import { REGISTRAR_ABI } from "../utils/Registrar.abi";
 import { useProver } from "../wasm";
 import type {
@@ -68,9 +68,7 @@ export function useEERC(
         });
 
         if (bytecode) {
-          const shouldUseSnarkJs = !bytecode.includes(
-            LEGACY_ENCRYPTED_ERC_BYTECODE,
-          );
+          const shouldUseSnarkJs = !bytecode.includes("0x60806040523");
 
           updateEercState({ snarkjsMode: shouldUseSnarkJs });
           logMessage(
