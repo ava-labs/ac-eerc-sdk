@@ -68,7 +68,7 @@ export function useEERC(
         });
 
         if (bytecode) {
-          const shouldUseSnarkJs = !bytecode.includes("0x60806040523");
+          const shouldUseSnarkJs = bytecode.includes("a509711610");
 
           updateEercState({ snarkjsMode: shouldUseSnarkJs });
           logMessage(
