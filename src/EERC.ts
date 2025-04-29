@@ -1078,20 +1078,39 @@ export class EERC {
       );
     }
 
-    const absoluteWasmURL = wasm.startsWith("/")
-      ? new URL(wasm, import.meta.url)
-      : new URL(wasm);
+    let wasmPath, zkeyPath;
 
-    const absoluteZkeyURL = zkey.startsWith("/")
-      ? new URL(zkey, import.meta.url)
-      : new URL(zkey);
+    // Check for Node.js environment
+    const isNode = typeof process !== 'undefined';
+
+    if (isNode) {
+      // Check if file exists locally
+      const fs = await import('fs');
+      if (fs.existsSync(wasm) && fs.existsSync(zkey)) {
+        wasmPath = wasm;
+        zkeyPath = zkey;
+      }
+    }
+
+    if (!wasmPath || !zkeyPath) {
+      const absoluteWasmURL = wasm.startsWith("/")
+          ? new URL(wasm, import.meta.url)
+          : new URL(wasm);
+
+      const absoluteZkeyURL = zkey.startsWith("/")
+          ? new URL(zkey, import.meta.url)
+          : new URL(zkey);
+
+      wasmPath = absoluteWasmURL.toString();
+      zkeyPath = absoluteZkeyURL.toString();
+    }
 
     const now = performance.now();
     const { proof: snarkProof, publicSignals } =
       await snarkjs.groth16.fullProve(
         input,
-        absoluteWasmURL.toString(),
-        absoluteZkeyURL.toString(),
+        wasmPath,
+        zkeyPath,
       );
 
     const rawCalldata = JSON.parse(
