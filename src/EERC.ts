@@ -998,10 +998,10 @@ export class EERC {
     amount: bigint,
     fromDecimals: number,
     toDecimals: number,
-  ) {
+  ): bigint {
     try {
       if (fromDecimals === toDecimals) {
-        return formatUnits(amount, toDecimals);
+        return amount;
       }
 
       // decimal difference
