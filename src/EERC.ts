@@ -1,6 +1,6 @@
 import { poseidon3, poseidon5 } from "poseidon-lite";
 import * as snarkjs from "snarkjs";
-import { type Log, decodeFunctionData, formatUnits, isAddress } from "viem";
+import { type Log, decodeFunctionData, isAddress } from "viem";
 import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
 import { BabyJub } from "./crypto/babyjub";
 import { FF } from "./crypto/ff";
@@ -998,10 +998,10 @@ export class EERC {
     amount: bigint,
     fromDecimals: number,
     toDecimals: number,
-  ) {
+  ): bigint {
     try {
       if (fromDecimals === toDecimals) {
-        return formatUnits(amount, toDecimals);
+        return amount;
       }
 
       // decimal difference
