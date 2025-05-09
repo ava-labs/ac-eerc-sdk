@@ -207,7 +207,7 @@ export class BabyJub {
     try {
       const { randomBytes } = await import("node:crypto");
       return new Uint8Array(randomBytes(bytes).buffer);
-    } catch (e) {
+    } catch (_) {
       throw new Error("Unable to find a secure random number generator");
     }
   }
