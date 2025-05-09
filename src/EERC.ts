@@ -1078,14 +1078,15 @@ export class EERC {
       );
     }
 
-    let wasmPath, zkeyPath;
+    let wasmPath = "";
+    let zkeyPath = "";
 
     // Check for Node.js environment
-    const isNode = typeof process !== 'undefined';
+    const isNode = typeof process !== "undefined";
 
     if (isNode) {
       // Check if file exists locally
-      const fs = await import('fs');
+      const fs = await import("node:fs");
       if (fs.existsSync(wasm) && fs.existsSync(zkey)) {
         wasmPath = wasm;
         zkeyPath = zkey;
@@ -1094,12 +1095,12 @@ export class EERC {
 
     if (!wasmPath || !zkeyPath) {
       const absoluteWasmURL = wasm.startsWith("/")
-          ? new URL(wasm, import.meta.url)
-          : new URL(wasm);
+        ? new URL(wasm, import.meta.url)
+        : new URL(wasm);
 
       const absoluteZkeyURL = zkey.startsWith("/")
-          ? new URL(zkey, import.meta.url)
-          : new URL(zkey);
+        ? new URL(zkey, import.meta.url)
+        : new URL(zkey);
 
       wasmPath = absoluteWasmURL.toString();
       zkeyPath = absoluteZkeyURL.toString();
@@ -1107,11 +1108,7 @@ export class EERC {
 
     const now = performance.now();
     const { proof: snarkProof, publicSignals } =
-      await snarkjs.groth16.fullProve(
-        input,
-        wasmPath,
-        zkeyPath,
-      );
+      await snarkjs.groth16.fullProve(input, wasmPath, zkeyPath);
 
     const rawCalldata = JSON.parse(
       `[${await snarkjs.groth16.exportSolidityCallData(snarkProof, publicSignals)}]`,
