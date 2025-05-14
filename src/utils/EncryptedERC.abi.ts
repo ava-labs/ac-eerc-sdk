@@ -43,6 +43,11 @@ export const ENCRYPTED_ERC_ABI = [
             name: "transferVerifier",
             type: "address",
           },
+          {
+            internalType: "address",
+            name: "burnVerifier",
+            type: "address",
+          },
         ],
         internalType: "struct CreateEncryptedERCParams",
         name: "params",
@@ -669,6 +674,19 @@ export const ENCRYPTED_ERC_ABI = [
   },
   {
     inputs: [],
+    name: "burnVerifier",
+    outputs: [
+      {
+        internalType: "contract IBurnVerifier",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "decimals",
     outputs: [
       {
@@ -926,12 +944,12 @@ export const ENCRYPTED_ERC_ABI = [
             type: "tuple",
           },
           {
-            internalType: "uint256[32]",
+            internalType: "uint256[19]",
             name: "publicSignals",
-            type: "uint256[32]",
+            type: "uint256[19]",
           },
         ],
-        internalType: "struct TransferProof",
+        internalType: "struct BurnProof",
         name: "proof",
         type: "tuple",
       },
