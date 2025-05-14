@@ -11,6 +11,8 @@ import { type IProof, logMessage } from "./helpers";
 import type {
   CircuitURLs,
   DecryptedTransaction,
+  EERCOperation,
+  EERCOperationGnark,
   IProveFunction,
   OperationResult,
   eERC_Proof,
@@ -52,7 +54,7 @@ export class EERC {
 
   public proveFunc: (
     data: string,
-    proofType: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+    proofType: EERCOperationGnark,
   ) => Promise<IProof>;
 
   public snarkjsMode: boolean;
@@ -1059,7 +1061,7 @@ export class EERC {
   private async generateProof(
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     input: any,
-    operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER" | "BURN",
+    operation: EERCOperation,
   ): Promise<eERC_Proof | IProof> {
     logMessage("Generating proof function");
 
@@ -1075,11 +1077,11 @@ export class EERC {
 
     const extractedInputs = this.extractSnarkJsInputsToGnark(
       input,
-      operation as "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+      operation as EERCOperationGnark,
     );
     const proof = await this.proveFunc(
       JSON.stringify(extractedInputs),
-      operation as "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+      operation as EERCOperationGnark,
     );
 
     if (extractedInputs) {
@@ -1092,7 +1094,7 @@ export class EERC {
   private async generateSnarkjsProof(
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     input: any,
-    operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER" | "BURN",
+    operation: EERCOperation,
   ): Promise<eERC_Proof> {
     let wasm: string;
     let zkey: string;
@@ -1164,7 +1166,7 @@ export class EERC {
   private extractSnarkJsInputsToGnark(
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     input: any,
-    operation: "REGISTER" | "MINT" | "WITHDRAW" | "TRANSFER",
+    operation: EERCOperationGnark,
   ) {
     switch (operation) {
       case "REGISTER":
