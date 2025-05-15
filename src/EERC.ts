@@ -1134,7 +1134,9 @@ export class EERC {
     let zkeyPath = "";
 
     // Check for Node.js environment
-    const isNode = typeof process !== "undefined";
+    const isBrowser =
+      typeof window !== "undefined" && typeof window.document !== "undefined";
+    const isNode = !isBrowser;
 
     if (isNode) {
       // Check if file exists locally
