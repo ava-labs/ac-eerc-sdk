@@ -7,8 +7,8 @@
   "types": "dist/index.d.ts",
   "files": ["dist", "README.md", "package.json"],
   "devDependencies": {
-    "@babel/core": "7.4.0",
-    "@babel/preset-env": "7.1.6",
+    "@babel/core": "7.27.1",
+    "@babel/preset-env": "7.27.2",
     "@biomejs/biome": "^1.8.3",
     "@jest/types": "^29.6.3",
     "@types/jest": "^29.5.12",
@@ -21,14 +21,14 @@
     "rimraf": "^6.0.1",
     "ts-jest": "^29.2.4",
     "ts-node": "^10.9.2",
-    "tsup": "^8.2.4",
+    "tsup": "^8.4.0",
     "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "peerDependencies": {
-    "react": ">=18",
+    "react": "^18 || ^19",
     "viem": "^1.21.4",
     "wagmi": "^1.4.13"
   },
