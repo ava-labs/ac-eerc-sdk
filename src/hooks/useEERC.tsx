@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Abi } from "viem";
+import type { Abi, PublicClient, WalletClient } from "viem";
 import {
-  type PublicClient,
-  type WalletClient,
   useContractRead,
   useContractReads,
 } from "wagmi";
@@ -123,8 +121,9 @@ export function useEERC(
     ...registrarContract,
     functionName: "getUserPublicKey",
     args: [wallet?.account?.address],
-    enabled: Boolean(eerc && wallet?.account?.address && registrarContract),
-    watch: true,
+    query: {
+        enabled: Boolean(eerc && wallet?.account?.address && registrarContract),
+    }
   });
 
   useEffect(() => {
@@ -165,8 +164,10 @@ export function useEERC(
           functionName: "owner",
         },
       ],
-      watch: true,
-      enabled: Boolean(contractAddress),
+      allowFailure: false,
+      query: {
+        enabled: Boolean(contractAddress),
+      }
     });
 
   // update name and symbol data
@@ -181,21 +182,11 @@ export function useEERC(
       ] = contractData;
 
       updateEercState({
-        name: nameData.status === "success" ? (nameData.result as string) : "",
-        symbol:
-          symbolData.status === "success" ? (symbolData.result as string) : "",
-        registrarAddress:
-          registrarAddress.status === "success"
-            ? (registrarAddress.result as string)
-            : "",
-        isConverter:
-          isConverterData.status === "success"
-            ? (isConverterData.result as boolean)
-            : false,
-        owner:
-          ownerData.status === "success"
-            ? (ownerData.result as `0x${string}`)
-            : "",
+        name: nameData as string,
+        symbol: symbolData as string,
+        registrarAddress: registrarAddress as string,
+        isConverter: isConverterData as boolean,
+        owner: ownerData as `0x${string}`,
       });
     }
   }, [contractData, isContractDataFetched, updateEercState]);
@@ -211,8 +202,9 @@ export function useEERC(
     ...eercContract,
     functionName: "auditorPublicKey",
     args: [],
-    enabled: Boolean(contractAddress) && Boolean(eerc),
-    watch: true,
+    query: {
+        enabled: Boolean(contractAddress) && Boolean(eerc),
+    }
   });
 
   useEffect(() => {
@@ -228,8 +220,9 @@ export function useEERC(
       ...eercContract,
       functionName: "auditor",
       args: [],
-      enabled: Boolean(contractAddress) && Boolean(eerc),
-      watch: true,
+      query: {
+        enabled: Boolean(contractAddress) && Boolean(eerc),
+      }
     }) as { data: `0x${string}`; isFetched: boolean };
 
   /**
@@ -303,7 +296,7 @@ export function useEERC(
     const initializeEERC = async () => {
       if (
         !client ||
-        !wallet?.account.address ||
+        !wallet || !wallet.account ||
         !contractAddress ||
         eercState.isConverter === undefined ||
         !eercState.registrarAddress ||
@@ -451,15 +444,15 @@ export function useEERC(
    * @returns boolean - returns true if user is auditor
    */
   const areYouAuditor = useMemo(() => {
-    if (!eerc || !eercState.auditorPublicKey.length) {
+    if (!eerc || !eerc.publicKey || !eercState.auditorPublicKey.length) {
       return false;
     }
 
     return (
-      eercState.auditorPublicKey[0] === eerc?.publicKey[0] &&
-      eercState.auditorPublicKey[1] === eerc?.publicKey[1]
+      eercState.auditorPublicKey[0] === eerc.publicKey[0] &&
+      eercState.auditorPublicKey[1] === eerc.publicKey[1]
     );
-  }, [eerc, eercState.auditorPublicKey]);
+  }, [eerc, eerc?.publicKey, eercState.auditorPublicKey]);
 
   /**
    * set contract auditor public key
@@ -479,7 +472,7 @@ export function useEERC(
     isAllDataFetched: eercState.isAllDataFetched, // is all data fetched
     isRegistered: eercState.isRegistered, // is user registered to the contract
     isConverter: eercState.isConverter, // is contract converter
-    publicKey: eerc?.publicKey ?? [], // user's public key
+  publicKey: eerc?.publicKey ?? [0n, 0n], // user's public key
     auditorAddress, // auditor address
     owner: eercState.owner, // owner address
     auditorPublicKey: eercState.auditorPublicKey, // auditor's public key

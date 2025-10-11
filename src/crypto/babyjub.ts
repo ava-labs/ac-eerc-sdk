@@ -48,7 +48,11 @@ export class BabyJub {
    * @returns point
    */
   addPoints(a: Point, b: Point): Point {
+    console.log('[addPoints] a:', a, 'a[0]:', a[0], 'a[1]:', a[1]);
+    console.log('[addPoints] b:', b, 'b[0]:', b[0], 'b[1]:', b[1]);
+    console.log('[addPoints] About to compute beta = mul(a[0], b[1])');
     const beta = this.field.mul(a[0], b[1]);
+    console.log('[addPoints] beta computed:', beta);
     const gamma = this.field.mul(a[1], b[0]);
     const delta = this.field.mul(
       this.field.sub(a[1], this.field.mul(this.A, a[0])),
@@ -90,13 +94,24 @@ export class BabyJub {
    * @returns point
    */
   mulWithScalar(p: Point, s: bigint): Point {
+    console.log('[mulWithScalar] p:', p);
+    console.log('[mulWithScalar] s:', s);
+    console.log('[mulWithScalar] this.field.zero:', this.field.zero);
+    console.log('[mulWithScalar] this.field.one:', this.field.one);
+    console.log('[mulWithScalar] this.Base8:', this.Base8);
+
     let res = [this.field.zero, this.field.one] as Point;
+    console.log('[mulWithScalar] res initialized:', res);
     let e = p;
+    console.log('[mulWithScalar] e:', e);
     let rem = s;
+
     while (!Scalar.isZero(rem)) {
       if (Scalar.isOdd(rem)) {
+        console.log('[mulWithScalar] About to call addPoints(res, e) where res=', res, 'e=', e);
         res = this.addPoints(res, e);
       }
+      console.log('[mulWithScalar] About to call addPoints(e, e) where e=', e);
       e = this.addPoints(e, e);
       rem = Scalar.shiftRight(rem, 1);
     }
@@ -210,5 +225,130 @@ export class BabyJub {
     } catch (_) {
       throw new Error("Unable to find a secure random number generator");
     }
+  }
+
+  /**
+   * Encrypt a message (byte array) with a public key using ECIES-like scheme
+   * @param publicKey recipient's public key
+   * @param message message as Uint8Array
+   * @returns encrypted message as Uint8Array
+   */
+  async encryptBytes(
+    publicKey: Point,
+    message: Uint8Array,
+  ): Promise<Uint8Array> {
+    console.log('[encryptBytes START] publicKey parameter:', publicKey);
+    console.log('[encryptBytes START] publicKey[0]:', publicKey[0]);
+    console.log('[encryptBytes START] publicKey[1]:', publicKey[1]);
+
+    // Validate inputs to avoid mixing undefined with BigInt ops
+    if (!publicKey || publicKey[0] == null || publicKey[1] == null) {
+      throw new Error('Invalid public key passed to encryptBytes. Expected [bigint, bigint] but got null/undefined');
+    }
+    if (typeof publicKey[0] !== 'bigint' || typeof publicKey[1] !== 'bigint') {
+      throw new Error('Invalid public key passed to encryptBytes. Expected [bigint, bigint]');
+    }
+    if (!(message instanceof Uint8Array)) {
+      throw new Error('encryptBytes expects message as Uint8Array');
+    }
+
+    // CRITICAL FIX: Create defensive copy to prevent mutations
+    // mulWithScalar modifies the input array reference during operations
+  const publicKeyCopy: Point = [publicKey[0], publicKey[1]];
+    console.log('[encryptBytes] Created defensive copy:', publicKeyCopy);
+
+    // Generate ephemeral key pair
+    const ephemeralPrivateKey = await BabyJub.generateRandomValue();
+    console.log('[encryptBytes] ephemeralPrivateKey generated:', ephemeralPrivateKey);
+
+    const ephemeralPublicKey = this.mulWithScalar(this.Base8, ephemeralPrivateKey);
+    console.log('[encryptBytes] ephemeralPublicKey computed:', ephemeralPublicKey);
+
+    console.log('[encryptBytes] About to compute sharedSecret with publicKeyCopy:', publicKeyCopy);
+    console.log('[encryptBytes] publicKeyCopy[0] before sharedSecret:', publicKeyCopy[0]);
+    console.log('[encryptBytes] publicKeyCopy[1] before sharedSecret:', publicKeyCopy[1]);
+
+    // Compute shared secret: S = ephemeralPrivateKey * publicKey
+  const sharedSecret = this.mulWithScalar(publicKeyCopy, ephemeralPrivateKey);
+
+    // Use x-coordinate of shared secret as encryption key
+    const keyBytes = this.bigintToBytes(sharedSecret[0]);
+
+    // XOR message with key (repeating key as needed)
+    const encrypted = new Uint8Array(message.length);
+    for (let i = 0; i < message.length; i++) {
+      encrypted[i] = message[i] ^ keyBytes[i % keyBytes.length];
+    }
+
+    // Return: ephemeralPublicKey (64 bytes) + encrypted message
+    const ephemeralPubKeyBytes = new Uint8Array(64);
+    const xBytes = this.bigintToBytes(ephemeralPublicKey[0]);
+    const yBytes = this.bigintToBytes(ephemeralPublicKey[1]);
+    ephemeralPubKeyBytes.set(xBytes, 32 - xBytes.length);
+    ephemeralPubKeyBytes.set(yBytes, 64 - yBytes.length);
+
+    const result = new Uint8Array(64 + encrypted.length);
+    result.set(ephemeralPubKeyBytes, 0);
+    result.set(encrypted, 64);
+
+    return result;
+  }
+
+  /**
+   * Decrypt a message encrypted with encryptBytes
+   * @param privateKey recipient's private key
+   * @param encryptedMessage encrypted message from encryptBytes
+   * @returns decrypted message as Uint8Array
+   */
+  decryptBytes(
+    privateKey: bigint,
+    encryptedMessage: Uint8Array,
+  ): Uint8Array {
+    // Extract ephemeral public key (first 64 bytes)
+    const ephemeralPubKeyBytes = encryptedMessage.slice(0, 64);
+    const ephemeralPublicKey: Point = [
+      this.bytesToBigint(ephemeralPubKeyBytes.slice(0, 32)),
+      this.bytesToBigint(ephemeralPubKeyBytes.slice(32, 64)),
+    ];
+
+    // Extract encrypted message
+    const encrypted = encryptedMessage.slice(64);
+
+    // Compute shared secret: S = privateKey * ephemeralPublicKey
+    const sharedSecret = this.mulWithScalar(ephemeralPublicKey, privateKey);
+
+    // Use x-coordinate of shared secret as decryption key
+    const keyBytes = this.bigintToBytes(sharedSecret[0]);
+
+    // XOR encrypted message with key to decrypt
+    const decrypted = new Uint8Array(encrypted.length);
+    for (let i = 0; i < encrypted.length; i++) {
+      decrypted[i] = encrypted[i] ^ keyBytes[i % keyBytes.length];
+    }
+
+    return decrypted;
+  }
+
+  /**
+   * Convert bigint to bytes (big-endian)
+   */
+  private bigintToBytes(n: bigint): Uint8Array {
+    const hex = n.toString(16).padStart(64, '0');
+    const bytes = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    return bytes;
+  }
+
+  /**
+   * Convert bytes to bigint (big-endian)
+   */
+  private bytesToBigint(bytes: Uint8Array): bigint {
+    let hex = '';
+    for (let i = 0; i < bytes.length; i++) {
+      hex += bytes[i].toString(16).padStart(2, '0');
+    }
+    return BigInt('0x' + hex);
   }
 }

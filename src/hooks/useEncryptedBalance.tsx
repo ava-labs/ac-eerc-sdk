@@ -34,8 +34,9 @@ export function useEncryptedBalance(
     ...eercContract,
     functionName: tokenAddress ? "getBalanceFromTokenAddress" : "balanceOf",
     args: [wallet?.account?.address, tokenAddress || 0n],
-    enabled: !!wallet?.account?.address,
-    watch: true,
+    query: {
+        enabled: !!wallet?.account?.address,
+    }
   });
 
   /**
@@ -44,7 +45,9 @@ export function useEncryptedBalance(
   const { data: decimals } = useContractRead({
     ...eercContract,
     functionName: "decimals",
-    enabled: !!contractAddress,
+    query: {
+        enabled: !!contractAddress,
+    }
   }) as { data: bigint };
 
   /**
@@ -54,7 +57,6 @@ export function useEncryptedBalance(
     ...eercContract,
     functionName: "auditorPublicKey",
     args: [],
-    watch: true,
   });
 
   useEffect(() => {

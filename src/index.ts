@@ -1,5 +1,5 @@
-import type { PublicClient, WalletClient } from "wagmi";
 import type { DecryptedTransaction, EERCHookResult } from "./hooks";
+import type { PublicClient, WalletClient } from "viem";
 
 export { EERC } from "./EERC";
 export { useEERC } from "./hooks";

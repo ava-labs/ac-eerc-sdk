@@ -1268,6 +1268,332 @@ export const ENCRYPTED_ERC_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "userIndex",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[16]",
+            name: "publicSignals",
+            type: "uint256[16]",
+          },
+        ],
+        internalType: "struct WithdrawProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+    ],
+    name: "withdrawViaIndex",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "userIndex",
+        type: "uint256",
+      },
+      {
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[16]",
+            name: "publicSignals",
+            type: "uint256[16]",
+          },
+        ],
+        internalType: "struct WithdrawProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+      {
+        internalType: "bytes",
+        name: "signature",
+        type: "bytes",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "deadline",
+        type: "uint256",
+      },
+    ],
+    name: "withdrawViaIndexWithSignature",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "userIndex",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[7]",
+        name: "auditorPCT",
+        type: "uint256[7]",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "auditorAddress",
+        type: "address",
+      },
+    ],
+    name: "WithdrawViaIndexWithSignature",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes",
+        name: "userEncryptedProof",
+        type: "bytes",
+      },
+      {
+        internalType: "bytes",
+        name: "auditorEncryptedProof",
+        type: "bytes",
+      },
+      {
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[16]",
+            name: "publicSignals",
+            type: "uint256[16]",
+          },
+        ],
+        internalType: "struct WithdrawProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+      {
+        internalType: "bytes",
+        name: "signature",
+        type: "bytes",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "deadline",
+        type: "uint256",
+      },
+    ],
+    name: "withdrawWithEncryptedProof",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "owner",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[7]",
+        name: "auditorPCT",
+        type: "uint256[7]",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "auditorAddress",
+        type: "address",
+      },
+    ],
+    name: "WithdrawWithEncryptedProof",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+    ],
+    name: "usedNonces",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "used",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "withdrawVerifier",
     outputs: [
@@ -2454,6 +2780,332 @@ export const LEGACY_ENCRYPTED_ERC_ABI = [
     name: "withdraw",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "userIndex",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[16]",
+            name: "publicSignals",
+            type: "uint256[16]",
+          },
+        ],
+        internalType: "struct WithdrawProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+    ],
+    name: "withdrawViaIndex",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "userIndex",
+        type: "uint256",
+      },
+      {
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[16]",
+            name: "publicSignals",
+            type: "uint256[16]",
+          },
+        ],
+        internalType: "struct WithdrawProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+      {
+        internalType: "bytes",
+        name: "signature",
+        type: "bytes",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "deadline",
+        type: "uint256",
+      },
+    ],
+    name: "withdrawViaIndexWithSignature",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "userIndex",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[7]",
+        name: "auditorPCT",
+        type: "uint256[7]",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "auditorAddress",
+        type: "address",
+      },
+    ],
+    name: "WithdrawViaIndexWithSignature",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes",
+        name: "userEncryptedProof",
+        type: "bytes",
+      },
+      {
+        internalType: "bytes",
+        name: "auditorEncryptedProof",
+        type: "bytes",
+      },
+      {
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        components: [
+          {
+            components: [
+              {
+                internalType: "uint256[2]",
+                name: "a",
+                type: "uint256[2]",
+              },
+              {
+                internalType: "uint256[2][2]",
+                name: "b",
+                type: "uint256[2][2]",
+              },
+              {
+                internalType: "uint256[2]",
+                name: "c",
+                type: "uint256[2]",
+              },
+            ],
+            internalType: "struct ProofPoints",
+            name: "proofPoints",
+            type: "tuple",
+          },
+          {
+            internalType: "uint256[16]",
+            name: "publicSignals",
+            type: "uint256[16]",
+          },
+        ],
+        internalType: "struct WithdrawProof",
+        name: "proof",
+        type: "tuple",
+      },
+      {
+        internalType: "uint256[7]",
+        name: "balancePCT",
+        type: "uint256[7]",
+      },
+      {
+        internalType: "bytes",
+        name: "signature",
+        type: "bytes",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "deadline",
+        type: "uint256",
+      },
+    ],
+    name: "withdrawWithEncryptedProof",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "owner",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "recipient",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[7]",
+        name: "auditorPCT",
+        type: "uint256[7]",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "auditorAddress",
+        type: "address",
+      },
+    ],
+    name: "WithdrawWithEncryptedProof",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "user",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+    ],
+    name: "usedNonces",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "used",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
     type: "function",
   },
   {

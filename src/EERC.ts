@@ -1,7 +1,6 @@
 import { poseidon3, poseidon5 } from "poseidon-lite";
 import * as snarkjs from "snarkjs";
-import { type Log, decodeFunctionData, isAddress } from "viem";
-import { type PublicClient, type WalletClient, erc20ABI } from "wagmi";
+import { type Log, type PublicClient, type WalletClient, decodeFunctionData, isAddress, erc20Abi, keccak256, concat } from "viem";
 import { BabyJub } from "./crypto/babyjub";
 import { FF } from "./crypto/ff";
 import { formatKeyForCurve, getPrivateKeyFromSignature } from "./crypto/key";
@@ -48,7 +47,7 @@ export class EERC {
   public legacyRegistrarAbi = LEGACY_REGISTRAR_ABI;
 
   private decryptionKey: string;
-  public publicKey: bigint[] = [];
+  public publicKey: Point | null = null;
 
   public circuitURLs: CircuitURLs;
 
@@ -122,12 +121,15 @@ export class EERC {
    * @returns transaction hash
    */
   public async setContractAuditorPublicKey(address: `0x${string}`) {
+    if (!this.wallet.account) throw new Error("Wallet account not found");
     try {
       return await this.wallet.writeContract({
         abi: this.encryptedErcAbi,
         address: this.contractAddress,
         functionName: "setAuditorPublicKey",
         args: [address],
+        account: this.wallet.account!,
+        chain: this.wallet.chain,
       });
     } catch (e) {
       throw new Error("Failed to set auditor public key!", { cause: e });
@@ -145,21 +147,20 @@ export class EERC {
    * function to generate the decryption key
    */
   public async generateDecryptionKey() {
-    if (!this.wallet || !this.client) {
-      this.throwError("Missing wallet or client!");
+    if (!this.wallet || !this.client || !this.wallet.account) {
+      this.throwError("Missing wallet, client or account!");
     }
-
     try {
-      const message = MESSAGES.REGISTER(this.wallet.account.address);
+      const message = MESSAGES.REGISTER(this.wallet.account!.address);
 
       // deriving the decryption key from the user signature
-      const signature = await this.wallet.signMessage({ message });
+      const signature = await this.wallet.signMessage({ message, account: this.wallet.account! });
       const key = getPrivateKeyFromSignature(signature);
 
-      this.decryptionKey = key;
+  this.decryptionKey = key;
 
-      const formatted = formatKeyForCurve(this.decryptionKey);
-      this.publicKey = this.curve.generatePublicKey(formatted);
+  const formatted = formatKeyForCurve(this.decryptionKey);
+  this.publicKey = this.curve.generatePublicKey(formatted);
 
       return key;
     } catch (error) {
@@ -175,9 +176,9 @@ export class EERC {
     key: string;
     transactionHash: string;
   }> {
-    if (!this.wallet || !this.client || !this.contractAddress)
-      throw new Error("Missing client, wallet or contract address!");
-
+    if (!this.wallet || !this.client || !this.contractAddress || !this.wallet.account)
+      throw new Error("Missing client, wallet, account or contract address!");
+    
     try {
       logMessage("Registering user to the contract");
 
@@ -228,10 +229,12 @@ export class EERC {
         args: this.snarkjsMode
           ? [proof]
           : [(proof as IProof).proof, (proof as IProof).publicInputs],
+        account: this.wallet.account!,
+        chain: this.wallet.chain,
       });
 
-      this.decryptionKey = key;
-      this.publicKey = publicKey;
+  this.decryptionKey = key;
+  this.publicKey = publicKey;
 
       // returns proof for the transaction
       return { key, transactionHash };
@@ -253,6 +256,7 @@ export class EERC {
     auditorPublicKey: Point,
   ): Promise<OperationResult> {
     if (this.isConverter) throw new Error("Not allowed for converter!");
+    if (!this.wallet.account) throw new Error("Wallet account not found");
     this.validateAddress(recipient);
     this.validateAmount(mintAmount);
     logMessage("Minting encrypted tokens");
@@ -319,6 +323,8 @@ export class EERC {
       args: this.snarkjsMode
         ? [recipient, proof]
         : [recipient, (proof as IProof).proof, (proof as IProof).publicInputs],
+      account: this.wallet.account!,
+      chain: this.wallet.chain,
     });
 
     return { transactionHash };
@@ -341,6 +347,7 @@ export class EERC {
     auditorPublicKey: bigint[],
   ) {
     if (this.isConverter) throw new Error("Not allowed for converter!");
+    if (!this.wallet.account) throw new Error("Wallet account not found");
     this.validateAmount(amount, decryptedBalance);
     logMessage("Burning encrypted tokens");
 
@@ -399,6 +406,8 @@ export class EERC {
       address: this.contractAddress,
       functionName: "privateBurn",
       args: [proof, [...userCiphertext, ...userAuthKey, userPoseidonNonce]],
+      account: this.wallet.account!,
+      chain: this.wallet.chain,
     });
 
     return { transactionHash };
@@ -428,6 +437,7 @@ export class EERC {
   }> {
     this.validateAddress(to);
     this.validateAmount(amount, decryptedBalance);
+    if (!this.wallet.account) throw new Error("Wallet account not found");
 
     let tokenId = 0n;
     if (tokenAddress) {
@@ -463,6 +473,8 @@ export class EERC {
             (proof as IProof).publicInputs,
             senderBalancePCT,
           ],
+      account: this.wallet.account!,
+      chain: this.wallet.chain,
     });
 
     return {
@@ -475,6 +487,7 @@ export class EERC {
   // function to deposit tokens to the contract
   async deposit(amount: bigint, tokenAddress: string, eERCDecimals: bigint) {
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
+    if (!this.wallet.account) throw new Error("Wallet account not found");
 
     logMessage("Depositing tokens to the contract");
     // check if the user has enough approve amount
@@ -489,7 +502,7 @@ export class EERC {
 
     // need to convert erc20 decimals -> eERC decimals (2)
     const decimals = await this.client.readContract({
-      abi: erc20ABI,
+      abi: erc20Abi,
       address: tokenAddress as `0x${string}`,
       functionName: "decimals",
     });
@@ -513,10 +526,13 @@ export class EERC {
       address: this.contractAddress as `0x${string}`,
       functionName: "deposit",
       args: [amount, tokenAddress, [...cipher, ...authKey, nonce]],
+      account: this.wallet.account!,
+      chain: this.wallet.chain,
     });
 
     return { transactionHash };
   }
+
 
   // function to deposit tokens to the contract
   async withdraw(
@@ -528,6 +544,7 @@ export class EERC {
   ): Promise<OperationResult> {
     // only work if eerc is converter
     if (!this.isConverter) throw new Error("Not allowed for stand alone!");
+    if (!this.wallet.account) throw new Error("Wallet account not found");
     this.validateAmount(amount, decryptedBalance);
 
     try {
@@ -594,6 +611,8 @@ export class EERC {
               (proof as IProof).publicInputs,
               userBalancePCT,
             ],
+        account: this.wallet.account!,
+        chain: this.wallet.chain,
       });
 
       return { transactionHash };
@@ -765,7 +784,7 @@ export class EERC {
    */
   async fetchUserApprove(userAddress: string, tokenAddress: string) {
     const data = await this.client.readContract({
-      abi: erc20ABI,
+      abi: erc20Abi,
       address: tokenAddress as `0x${string}`,
       functionName: "allowance",
       args: [userAddress as `0x${string}`, this.contractAddress],
@@ -788,6 +807,461 @@ export class EERC {
     });
 
     return data as bigint;
+  }
+
+  /**
+   * function to check if a nonce has been used for signature-based withdrawals
+   * @param signer address of the signer
+   * @param nonce nonce to check
+   * @returns true if nonce has been used, false otherwise
+   */
+  async fetchNonceUsed(signer: string, nonce: bigint): Promise<boolean> {
+    const data = await this.client.readContract({
+      abi: this.encryptedErcAbi,
+      address: this.contractAddress as `0x${string}`,
+      functionName: "usedNonces",
+      args: [signer as `0x${string}`, nonce],
+    });
+
+    return data as boolean;
+  }
+
+  /**
+   * function to get EIP-712 domain for signature generation
+   * @returns EIP-712 domain separator data
+   */
+  async getEIP712Domain() {
+    const chainId = await this.client.getChainId();
+
+    return {
+      name: "EncryptedERC",
+      version: "1",
+      chainId,
+      verifyingContract: this.contractAddress,
+    };
+  }
+
+  /**
+   * function to generate EIP-712 signature for stealth withdrawal authorization
+   * @param userIndex encrypted index of the user
+   * @param recipient address to receive withdrawn tokens
+   * @param nonce unique nonce for this signature
+   * @param deadline timestamp after which signature expires
+   * @returns signature bytes
+   */
+  async generateWithdrawSignature(
+    userIndex: bigint,
+    recipient: string,
+    nonce: bigint,
+    deadline: bigint,
+  ): Promise<`0x${string}`> {
+    if (!this.wallet || !this.wallet.account) throw new Error("Missing wallet or account!");
+
+    try {
+      // Get EIP-712 domain
+      const domain = await this.getEIP712Domain();
+
+      // Define types for WithdrawAuthorization
+      const types = {
+        WithdrawAuthorization: [
+          { name: "index", type: "uint256" },
+          { name: "recipient", type: "address" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+        ],
+      };
+
+      // Build message
+      const message = {
+        index: userIndex,
+        recipient: recipient as `0x${string}`,
+        nonce,
+        deadline,
+      };
+
+      // Sign using EIP-712
+      const signature = await this.wallet.signTypedData({
+        account: this.wallet.account!,
+        domain,
+        types,
+        primaryType: "WithdrawAuthorization",
+        message,
+      });
+
+      return signature;
+    } catch (e) {
+      throw new Error(`Failed to generate signature: ${e}`);
+    }
+  }
+
+
+  /**
+   * Generate encrypted proof messages for metadata-based withdrawal
+   * Creates dual encryption: one for user, one for auditor
+   * @param amount withdrawal amount
+   * @param recipient address receiving withdrawn tokens
+   * @param nonce unique nonce
+   * @param deadline signature expiration
+   * @returns userProof and auditorProof as hex strings
+   */
+  private async generateEncryptedProof(
+    amount: bigint,
+    recipient: string,
+    nonce: bigint,
+    deadline: bigint,
+  ): Promise<{ userProof: `0x${string}`; auditorProof: `0x${string}` }> {
+    if (!this.wallet.account) throw new Error("Missing wallet account!");
+
+    // Derive a fresh public key from the stored decryption key to avoid any runtime mutations
+    if (!this.decryptionKey) {
+      throw new Error("Missing decryption key; call generateDecryptionKey() first.");
+    }
+    const formattedSk = formatKeyForCurve(this.decryptionKey);
+    const localPublicKey = this.curve.generatePublicKey(formattedSk);
+    if (
+      typeof localPublicKey[0] !== "bigint" ||
+      typeof localPublicKey[1] !== "bigint"
+    ) {
+      throw new Error("Derived public key is invalid");
+    }
+  console.log('[SDK generateEncryptedProof] using derived user publicKey:', localPublicKey);
+
+    // Create proof message
+    const proofMessage = {
+      owner: this.wallet.account.address,
+      amount: amount.toString(),
+      recipient,
+      nonce: nonce.toString(),
+      deadline: deadline.toString(),
+      timestamp: Date.now(),
+    };
+
+    const messageBytes = new TextEncoder().encode(
+      JSON.stringify(proofMessage),
+    );
+
+  console.log('[SDK] About to call encryptBytes with publicKey:', this.publicKey);
+
+    // Encrypt with user's own public key
+  console.log('[SDK generateEncryptedProof] calling encryptBytes for user with key:', localPublicKey);
+  const userEncrypted = await this.curve.encryptBytes(localPublicKey, messageBytes);
+
+    // Get auditor public key (Point struct)
+    const auditorPubKeyStruct = await this.client.readContract({
+      address: this.contractAddress,
+      abi: this.encryptedErcAbi,
+      functionName: "auditorPublicKey",
+    });
+
+    // Extract x and y from Point struct (viem returns as array)
+    let auditorPubKey: bigint[];
+    if (Array.isArray(auditorPubKeyStruct) && auditorPubKeyStruct.length === 2) {
+      auditorPubKey = [BigInt(auditorPubKeyStruct[0]), BigInt(auditorPubKeyStruct[1])];
+    } else if (auditorPubKeyStruct && typeof auditorPubKeyStruct === 'object') {
+      const struct = auditorPubKeyStruct as { x?: bigint; y?: bigint };
+      if (struct.x !== undefined && struct.y !== undefined) {
+        auditorPubKey = [BigInt(struct.x), BigInt(struct.y)];
+      } else {
+        throw new Error('Invalid auditor public key structure from contract');
+      }
+    } else {
+      throw new Error('Could not extract auditor public key from contract response');
+    }
+
+    if (auditorPubKey[0] === 0n && auditorPubKey[1] === 0n) {
+      throw new Error('Auditor public key not set on contract');
+    }
+
+    // Encrypt with auditor's public key
+    console.log('[SDK generateEncryptedProof] using auditor publicKey:', auditorPubKey);
+    console.log('[SDK generateEncryptedProof] calling encryptBytes for auditor with key:', auditorPubKey);
+    const auditorEncrypted = await this.curve.encryptBytes(
+      auditorPubKey as Point,
+      messageBytes,
+    );
+
+    // Convert to hex strings
+    const userProof = `0x${Buffer.from(userEncrypted).toString("hex")}` as `0x${string}`;
+    const auditorProof =
+      `0x${Buffer.from(auditorEncrypted).toString("hex")}` as `0x${string}`;
+
+    return { userProof, auditorProof };
+  }
+
+  /**
+   * Generate EIP-712 signature for metadata-based withdrawal
+   * @param userProof encrypted proof for user
+   * @param auditorProof encrypted proof for auditor
+   * @param recipient address receiving tokens
+   * @param nonce unique nonce
+   * @param deadline signature expiration
+   * @returns EIP-712 signature
+   */
+  async generateEncryptedProofSignature(
+    userProof: `0x${string}`,
+    auditorProof: `0x${string}`,
+    recipient: string,
+    nonce: bigint,
+    deadline: bigint,
+  ): Promise<`0x${string}`> {
+    if (!this.wallet || !this.wallet.account) throw new Error("Missing wallet or account!");
+
+    try {
+      // Get EIP-712 domain
+      const domain = await this.getEIP712Domain();
+
+      // Hash the proofs (matching Solidity logic: keccak256(abi.encodePacked(userProof, auditorProof)))
+      const proofHash = keccak256(concat([userProof, auditorProof]));
+
+      // Define types for WithdrawMetadataAuthorization
+      const types = {
+        WithdrawMetadataAuthorization: [
+          { name: "proofHash", type: "bytes32" },
+          { name: "recipient", type: "address" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+        ],
+      };
+
+      // Build message
+      const message = {
+        proofHash,
+        recipient: recipient as `0x${string}`,
+        nonce,
+        deadline,
+      };
+
+      // Sign using EIP-712
+      const signature = await this.wallet.signTypedData({
+        account: this.wallet.account!,
+        domain,
+        types,
+        primaryType: "WithdrawMetadataAuthorization",
+        message,
+      });
+
+      return signature;
+    } catch (e) {
+      throw new Error(`Failed to generate signature: ${e}`);
+    }
+  }
+
+  /**
+   * Withdraw via encrypted metadata proof with signature (maximum privacy stealth withdrawal)
+   * Main wallet signs off-chain, stealth wallet submits on-chain
+   * User maintains own withdrawal history via encrypted metadata
+   * @param recipient address to receive withdrawn tokens
+   * @param amount withdrawal amount
+   * @param encryptedBalance encrypted balance
+   * @param decryptedBalance decrypted balance
+   * @param auditorPublicKey auditor public key
+   * @param tokenAddress token address
+   * @param signature EIP-712 signature from main wallet
+   * @param nonce nonce used in signature
+   * @param deadline deadline used in signature
+   * @returns transaction hash
+   */
+  async withdrawWithEncryptedProof(
+    recipient: string,
+    amount: bigint,
+    encryptedBalance: bigint[],
+    decryptedBalance: bigint,
+    auditorPublicKey: bigint[],
+    tokenAddress: string,
+    signature: `0x${string}`,
+    nonce: bigint,
+    deadline: bigint,
+  ): Promise<OperationResult> {
+    // only work if eerc is converter
+    if (!this.isConverter) throw new Error("Not allowed for stand alone!");
+    if (!this.wallet.account) throw new Error("Wallet account not found");
+
+    this.validateAddress(recipient);
+
+    // Ensure all values are BigInt to avoid mixing types
+    const amountBigInt = BigInt(amount);
+    const decryptedBalanceBigInt = BigInt(decryptedBalance);
+    const nonceBigInt = BigInt(nonce);
+    const deadlineBigInt = BigInt(deadline);
+    const encryptedBalanceBigInt = encryptedBalance.map(v => BigInt(v));
+    const auditorPublicKeyBigInt = auditorPublicKey.map(v => BigInt(v));
+
+    this.validateAmount(amountBigInt, decryptedBalanceBigInt);
+
+    try {
+      const tokenId = await this.fetchTokenId(tokenAddress);
+
+      const newBalance = decryptedBalanceBigInt - amountBigInt;
+      const privateKey = formatKeyForCurve(this.decryptionKey);
+
+      // 1. Generate encrypted proofs for both user and auditor
+      const { userProof, auditorProof } = await this.generateEncryptedProof(
+        amountBigInt,
+        recipient,
+        nonceBigInt,
+        deadlineBigInt,
+      );
+
+      // 2. create pct for the user with the new balance
+      const {
+        cipher: senderCipherText,
+        nonce: senderPoseidonNonce,
+        authKey: senderAuthKey,
+      } = await this.poseidon.processPoseidonEncryption({
+        inputs: [newBalance],
+        publicKey: this.publicKey as Point,
+      });
+
+      // 3. create pct for the auditor with the withdraw amount
+      const {
+        cipher: auditorCipherText,
+        nonce: auditorPoseidonNonce,
+        authKey: auditorAuthKey,
+        encryptionRandom: auditorEncryptionRandom,
+      } = await this.poseidon.processPoseidonEncryption({
+        inputs: [amountBigInt],
+        publicKey: auditorPublicKeyBigInt as Point,
+      });
+
+      const input = {
+        ValueToWithdraw: amountBigInt,
+        SenderPrivateKey: privateKey,
+        SenderPublicKey: this.publicKey,
+        SenderBalance: decryptedBalanceBigInt,
+        SenderBalanceC1: encryptedBalanceBigInt.slice(0, 2),
+        SenderBalanceC2: encryptedBalanceBigInt.slice(2, 4),
+        AuditorPublicKey: auditorPublicKeyBigInt,
+        AuditorPCT: auditorCipherText,
+        AuditorPCTAuthKey: auditorAuthKey,
+        AuditorPCTNonce: auditorPoseidonNonce,
+        AuditorPCTRandom: auditorEncryptionRandom,
+      };
+
+      // generate proof using existing WITHDRAW circuit
+      const proof = await this.generateProof(input, "WITHDRAW");
+
+      const userBalancePCT = [
+        ...senderCipherText,
+        ...senderAuthKey,
+        senderPoseidonNonce,
+      ].map(String);
+
+      logMessage("Sending withdrawWithEncryptedProof transaction");
+
+      const transactionHash = await this.wallet.writeContract({
+        abi: this.snarkjsMode
+          ? this.encryptedErcAbi
+          : this.legacyEncryptedErcAbi,
+        address: this.contractAddress as `0x${string}`,
+        functionName: "withdrawWithEncryptedProof",
+        args: this.snarkjsMode
+          ? [
+              userProof,
+              auditorProof,
+              recipient as `0x${string}`,
+              tokenId,
+              proof,
+              userBalancePCT,
+              signature,
+              nonceBigInt,
+              deadlineBigInt,
+            ]
+          : [
+              userProof,
+              auditorProof,
+              recipient as `0x${string}`,
+              tokenId,
+              (proof as IProof).proof,
+              (proof as IProof).publicInputs,
+              userBalancePCT,
+              signature,
+              nonceBigInt,
+              deadlineBigInt,
+            ],
+        account: this.wallet.account!,
+        chain: this.wallet.chain,
+      });
+
+      return { transactionHash };
+    } catch (e) {
+      throw new Error(e as string);
+    }
+  }
+
+  /**
+   * Get user's withdrawal history from encrypted metadata
+   * User can decrypt their own withdrawal records
+   * @returns array of decrypted withdrawal records
+   */
+  async getMyWithdrawalHistory(): Promise<
+    Array<{
+      owner: string;
+      amount: string;
+      recipient: string;
+      nonce: string;
+      deadline: string;
+      timestamp: number;
+    }>
+  > {
+    if (!this.wallet.account) throw new Error("Missing wallet account!");
+
+    try {
+      const privateKey = formatKeyForCurve(this.decryptionKey);
+
+      // Get PrivateMessage events where user is recipient
+      const logs = await this.client.getLogs({
+        address: this.contractAddress,
+        event: {
+          type: "event",
+          name: "PrivateMessage",
+          inputs: [
+            { type: "address", name: "from", indexed: true },
+            { type: "address", name: "to", indexed: true },
+            { type: "string", name: "messageType", indexed: false },
+            { type: "bytes", name: "encryptedMsg", indexed: false },
+          ],
+        },
+        args: {
+          to: this.wallet.account.address,
+        },
+        fromBlock: "earliest",
+        toBlock: "latest",
+      });
+
+      const withdrawals = [];
+
+      for (const log of logs) {
+        const { args } = log;
+        if (args && args.messageType === "WITHDRAW_SELF" && args.encryptedMsg) {
+          try {
+            // Decrypt the message
+            const encryptedBuf = Buffer.from(
+              (args.encryptedMsg as string).slice(2),
+              "hex",
+            );
+            const encryptedBytes = new Uint8Array(
+              encryptedBuf.buffer,
+              encryptedBuf.byteOffset,
+              encryptedBuf.byteLength,
+            );
+            const decrypted = this.curve.decryptBytes(
+              privateKey,
+              encryptedBytes,
+            );
+            const decoded = new TextDecoder().decode(decrypted);
+            const withdrawal = JSON.parse(decoded);
+            withdrawals.push(withdrawal);
+          } catch (e) {
+            // Skip messages we can't decrypt
+            continue;
+          }
+        }
+      }
+
+      return withdrawals;
+    } catch (e) {
+      throw new Error(`Failed to fetch withdrawal history: ${e}`);
+    }
   }
 
   /**
@@ -868,6 +1342,7 @@ export class EERC {
    * @dev function checks if user has been auditor before from contract event logs
    */
   async hasBeenAuditor(): Promise<boolean> {
+    if (!this.wallet.account) return false;
     const auditorChangedEvent = {
       anonymous: false,
       inputs: [
@@ -908,11 +1383,12 @@ export class EERC {
 
     // filter that only has oldAuditor and newAuditor is the user address
     const filteredLogs = logs.filter(
-      (log) =>
+      (
+        log) =>
         log.args.oldAuditor.toLowerCase() ===
-          this.wallet.account.address.toLowerCase() ||
+          this.wallet.account?.address.toLowerCase() ||
         log.args.newAuditor.toLowerCase() ===
-          this.wallet.account.address.toLowerCase(),
+          this.wallet.account?.address.toLowerCase(),
     );
 
     let currentStart = null;
@@ -921,12 +1397,12 @@ export class EERC {
       const { oldAuditor, newAuditor } = log.args;
 
       if (
-        newAuditor.toLowerCase() === this.wallet.account.address.toLowerCase()
+        newAuditor.toLowerCase() === this.wallet.account?.address.toLowerCase()
       ) {
         currentStart = log.blockNumber;
       } else if (
         oldAuditor.toLowerCase() ===
-          this.wallet.account.address.toLowerCase() &&
+          this.wallet.account?.address.toLowerCase() &&
         currentStart !== null
       ) {
         return true;
@@ -948,6 +1424,8 @@ export class EERC {
    */
   async auditorDecrypt(): Promise<DecryptedTransaction[]> {
     if (!this.decryptionKey) throw new Error("Missing decryption key!");
+    if (!this.wallet.account) throw new Error("Missing wallet account!");
+    const account = this.wallet.account;
     const isAuditor = await this.hasBeenAuditor();
     if (!isAuditor) {
       throw new Error("User is not an auditor");
@@ -981,7 +1459,7 @@ export class EERC {
             type: "event",
           },
           args: {
-            auditorAddress: this.wallet.account.address,
+            auditorAddress: account.address,
           },
         })) as NamedEvents[];
 
@@ -1160,9 +1638,27 @@ export class EERC {
       zkeyPath = absoluteZkeyURL.toString();
     }
 
+    // Convert all BigInts to strings for snarkjs
+    const convertBigIntsToStrings = (obj: any): any => {
+      if (typeof obj === 'bigint') {
+        return obj.toString();
+      } else if (Array.isArray(obj)) {
+        return obj.map(convertBigIntsToStrings);
+      } else if (obj && typeof obj === 'object') {
+        const result: any = {};
+        for (const key in obj) {
+          result[key] = convertBigIntsToStrings(obj[key]);
+        }
+        return result;
+      }
+      return obj;
+    };
+
+    const stringInput = convertBigIntsToStrings(input);
+
     const now = performance.now();
     const { proof: snarkProof, publicSignals } =
-      await snarkjs.groth16.fullProve(input, wasmPath, zkeyPath);
+      await snarkjs.groth16.fullProve(stringInput, wasmPath, zkeyPath);
 
     const rawCalldata = JSON.parse(
       `[${await snarkjs.groth16.exportSolidityCallData(snarkProof, publicSignals)}]`,
